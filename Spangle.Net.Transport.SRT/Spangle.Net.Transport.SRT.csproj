@@ -1,17 +1,33 @@
 <Project Sdk="Microsoft.NET.Sdk">
+  <Sdk Name="SharpGenTools.Sdk" Version="2.0.0-beta.13" />
 
-    <PropertyGroup>
-        <TargetFramework>net7.0</TargetFramework>
-        <ImplicitUsings>enable</ImplicitUsings>
-        <Nullable>enable</Nullable>
-    </PropertyGroup>
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>11</LangVersion>
+  </PropertyGroup>
 
-    <ItemGroup>
-      <PackageReference Include="SharpGen.Runtime" Version="1.2.1" />
-      <PackageReference Include="SharpGenTools.Sdk" Version="1.2.1">
-        <PrivateAssets>all</PrivateAssets>
-        <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-      </PackageReference>
-    </ItemGroup>
+  <PropertyGroup>
+    <SolutionDir>$([System.IO.Path]::GetDirectoryName($(MSBuildProjectDirectory)))\</SolutionDir>
+    <VcpkgDir>$(SolutionDir)/vcpkg</VcpkgDir>
+    <ScriptExt Condition=" '$(OS)' == 'Windows_NT' ">bat</ScriptExt>
+    <ScriptExt Condition=" '$(OS)' != 'Windows_NT' ">sh</ScriptExt>
+  </PropertyGroup>
 
+  <Target Name="FetchVcpkg" BeforeTargets="Build">
+    <Exec Command="git clone https://github.com/microsoft/vcpkg"
+          WorkingDirectory="$(SolutionDir)"
+          Condition="!Exists('$(VcpkgDir)/.git')"/>
+    <Exec Command="git pull --rebase" WorkingDirectory="$(VcpkgDir)"/>
+    <Exec Command="$(VcpkgDir)/bootstrap-vcpkg.$(ScriptExt)"/>
+  </Target>
+  <Target Name="FetchSRT" AfterTargets="FetchVcpkg" BeforeTargets="Build">
+    <Exec Command="$(VcpkgDir)/vcpkg install libsrt --triplet x64-windows"/>
+<!--    <Exec Command="$(VcpkgDir)/vcpkg install libsrt &#45;&#45;triplet x64-linux"/>-->
+<!--    <Exec Command="$(VcpkgDir)/vcpkg install libsrt &#45;&#45;triplet x64-osx"/>-->
+<!--    <Exec Command="$(VcpkgDir)/vcpkg install libsrt &#45;&#45;triplet arm64-windows"/>-->
+<!--    <Exec Command="$(VcpkgDir)/vcpkg install libsrt &#45;&#45;triplet arm64-linux"/>-->
+<!--    <Exec Command="$(VcpkgDir)/vcpkg install libsrt &#45;&#45;triplet arm64-osx"/>-->
+  </Target>
 </Project>
