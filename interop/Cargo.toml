@@ -1,0 +1,16 @@
+[package]
+name = "srt-interop"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+path = "lib.rs"
+
+[dependencies]
+csbindgen = "1.2.0"
+
+[build-dependencies]
+bindgen = "0.64.0"
+csbindgen = "1.2.0"

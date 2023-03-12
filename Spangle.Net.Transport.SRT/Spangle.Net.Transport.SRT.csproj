@@ -2,7 +2,7 @@
   <Sdk Name="SharpGenTools.Sdk" Version="2.0.0-beta.13" />
 
   <PropertyGroup>
-    <TargetFramework>netstandard2.1</TargetFramework>
+    <TargetFramework>net7.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <LangVersion>11</LangVersion>
@@ -10,24 +10,52 @@
 
   <PropertyGroup>
     <SolutionDir>$([System.IO.Path]::GetDirectoryName($(MSBuildProjectDirectory)))\</SolutionDir>
-    <VcpkgDir>$(SolutionDir)/vcpkg</VcpkgDir>
+    <VcpkgDir>$(SolutionDir)/interop/vcpkg</VcpkgDir>
     <ScriptExt Condition=" '$(OS)' == 'Windows_NT' ">bat</ScriptExt>
     <ScriptExt Condition=" '$(OS)' != 'Windows_NT' ">sh</ScriptExt>
   </PropertyGroup>
 
-  <Target Name="FetchVcpkg" BeforeTargets="Build">
-    <Exec Command="git clone https://github.com/microsoft/vcpkg"
-          WorkingDirectory="$(SolutionDir)"
-          Condition="!Exists('$(VcpkgDir)/.git')"/>
-    <Exec Command="git pull --rebase" WorkingDirectory="$(VcpkgDir)"/>
-    <Exec Command="$(VcpkgDir)/bootstrap-vcpkg.$(ScriptExt)"/>
+  <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.IO.Pipelines" Version="7.0.0" />
+    <Compile Include="../interop/dotnet/LibSRT.g.cs" />
+  </ItemGroup>
+  
+  <ItemGroup>
+    <Using Include="System.Int32" Alias="SRTSOCKET" />
+  </ItemGroup>
+
+  <Target Name="InitVcpkg" BeforeTargets="Build">
+    <Exec Command="$(VcpkgDir)/bootstrap-vcpkg.$(ScriptExt)" />
   </Target>
+
   <Target Name="FetchSRT" AfterTargets="FetchVcpkg" BeforeTargets="Build">
-    <Exec Command="$(VcpkgDir)/vcpkg install libsrt --triplet x64-windows"/>
-<!--    <Exec Command="$(VcpkgDir)/vcpkg install libsrt &#45;&#45;triplet x64-linux"/>-->
+<!--    <Exec Command="$(VcpkgDir)/vcpkg install libsrt &#45;&#45;triplet x64-windows"/>-->
+    <Exec Command="$(VcpkgDir)/vcpkg install libsrt --triplet x64-linux" />
 <!--    <Exec Command="$(VcpkgDir)/vcpkg install libsrt &#45;&#45;triplet x64-osx"/>-->
 <!--    <Exec Command="$(VcpkgDir)/vcpkg install libsrt &#45;&#45;triplet arm64-windows"/>-->
 <!--    <Exec Command="$(VcpkgDir)/vcpkg install libsrt &#45;&#45;triplet arm64-linux"/>-->
 <!--    <Exec Command="$(VcpkgDir)/vcpkg install libsrt &#45;&#45;triplet arm64-osx"/>-->
   </Target>
+
+  <Target Name="BuildBinding" AfterTargets="FetchSRT" BeforeTargets="Build">
+    <Exec Command="cargo build" WorkingDirectory="$(SolutionDir)/interop"/>
+  </Target>
+  
+  <ItemGroup>
+    <CLibPath Include="$(VcpkgDir)/installed/x64-linux/lib/libsrt.*"/>
+    <RSLibPath Include="$(SolutionDir)/interop/target/debug/libsrt_interop.*"/>
+  </ItemGroup>
+  <Target Name="CopyArtifacts" AfterTargets="Build">
+    <Copy SourceFiles="@(CLibPath)" DestinationFolder="$(OutputPath)"/>
+    <Copy SourceFiles="@(RSLibPath)" DestinationFolder="$(OutputPath)"/>
+  </Target>
+  
 </Project>
