@@ -8647,6 +8647,13 @@ pub type srt_listen_callback_fn = ::std::option::Option<
         streamid: *const ::std::os::raw::c_char,
     ) -> ::std::os::raw::c_int,
 >;
+extern "C" {
+    pub fn srt_listen_callback(
+        lsn: SRTSOCKET,
+        hook_fn: srt_listen_callback_fn,
+        hook_opaque: *mut ::std::os::raw::c_void,
+    ) -> ::std::os::raw::c_int;
+}
 pub type srt_connect_callback_fn = ::std::option::Option<
     unsafe extern "C" fn(
         opaq: *mut ::std::os::raw::c_void,
@@ -8656,6 +8663,13 @@ pub type srt_connect_callback_fn = ::std::option::Option<
         token: ::std::os::raw::c_int,
     ),
 >;
+extern "C" {
+    pub fn srt_connect_callback(
+        clr: SRTSOCKET,
+        hook_fn: srt_connect_callback_fn,
+        hook_opaque: *mut ::std::os::raw::c_void,
+    ) -> ::std::os::raw::c_int;
+}
 extern "C" {
     pub fn srt_connect(
         u: SRTSOCKET,
@@ -9093,6 +9107,9 @@ extern "C" {
 }
 extern "C" {
     pub fn srt_resetlogfa(fara: *const ::std::os::raw::c_int, fara_size: usize);
+}
+extern "C" {
+    pub fn srt_setloghandler(opaque: *mut ::std::os::raw::c_void, handler: SRT_LOG_HANDLER_FN);
 }
 extern "C" {
     pub fn srt_setlogflags(flags: ::std::os::raw::c_int);

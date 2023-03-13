@@ -10,7 +10,7 @@ namespace Spangle.Interop.Native
 {
     internal static unsafe partial class LibSRT
     {
-        const string __DllName = "libsrt";
+        const string __DllName = "libsrt-interop";
 
         [DllImport(__DllName, EntryPoint = "csbindgen_srt_startup", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         public static extern int srt_startup();
@@ -38,6 +38,12 @@ namespace Spangle.Interop.Native
 
         [DllImport(__DllName, EntryPoint = "csbindgen_srt_accept_bond", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         public static extern int srt_accept_bond(int* listeners, int lsize, long msTimeOut);
+
+        [DllImport(__DllName, EntryPoint = "csbindgen_srt_listen_callback", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        public static extern int srt_listen_callback(int lsn, delegate* unmanaged[Cdecl]<void*, int, int, sockaddr*, byte*, int> hook_fn, void* hook_opaque);
+
+        [DllImport(__DllName, EntryPoint = "csbindgen_srt_connect_callback", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        public static extern int srt_connect_callback(int clr, delegate* unmanaged[Cdecl]<void*, int, int, sockaddr*, int, void> hook_fn, void* hook_opaque);
 
         [DllImport(__DllName, EntryPoint = "csbindgen_srt_connect", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         public static extern int srt_connect(int u, sockaddr* name, int namelen);
@@ -167,6 +173,9 @@ namespace Spangle.Interop.Native
 
         [DllImport(__DllName, EntryPoint = "csbindgen_srt_resetlogfa", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         public static extern void srt_resetlogfa(int* fara, nuint fara_size);
+
+        [DllImport(__DllName, EntryPoint = "csbindgen_srt_setloghandler", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        public static extern void srt_setloghandler(void* opaque, delegate* unmanaged[Cdecl]<void*, int, byte*, int, byte*, byte*, void> handler);
 
         [DllImport(__DllName, EntryPoint = "csbindgen_srt_setlogflags", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         public static extern void srt_setlogflags(int flags);

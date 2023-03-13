@@ -117,6 +117,34 @@ pub unsafe extern "C" fn csbindgen_srt_accept_bond(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn csbindgen_srt_listen_callback(
+    lsn: SRTSOCKET,
+    hook_fn: srt_listen_callback_fn,
+    hook_opaque: *mut c_void    
+) -> c_int
+{
+    srt_listen_callback(
+        lsn,
+        hook_fn,
+        hook_opaque
+    )
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn csbindgen_srt_connect_callback(
+    clr: SRTSOCKET,
+    hook_fn: srt_connect_callback_fn,
+    hook_opaque: *mut c_void    
+) -> c_int
+{
+    srt_connect_callback(
+        clr,
+        hook_fn,
+        hook_opaque
+    )
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn csbindgen_srt_connect(
     u: SRTSOCKET,
     name: *const sockaddr,
@@ -711,6 +739,18 @@ pub unsafe extern "C" fn csbindgen_srt_resetlogfa(
     srt_resetlogfa(
         fara,
         fara_size
+    )
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn csbindgen_srt_setloghandler(
+    opaque: *mut c_void,
+    handler: SRT_LOG_HANDLER_FN    
+)
+{
+    srt_setloghandler(
+        opaque,
+        handler
     )
 }
 

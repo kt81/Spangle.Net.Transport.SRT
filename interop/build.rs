@@ -34,8 +34,8 @@ fn main() {
         // .allowlist_type("^sockaddr.*")
         // .allowlist_var("^SRT_.*")
         // exclude methods that have Option types in the signature (and maybe will not be used)
-        .blocklist_function(".*_callback$")
-        .blocklist_function(".*handler$")
+        // .blocklist_function(".*_callback$")
+        // .blocklist_function(".*handler$")
         .generate()
         .unwrap()
         .write_to_file("srt.rs")
@@ -49,7 +49,7 @@ fn main() {
         .csharp_class_name("LibSRT")
         .csharp_class_accessibility("internal")
         .csharp_namespace("Spangle.Interop.Native")
-        .csharp_dll_name("libsrt")
+        .csharp_dll_name("libsrt-interop")
         .generate_to_file("srt_ffi.rs", "dotnet/LibSRT.g.cs")
         .unwrap();
 }
