@@ -27,7 +27,7 @@
     <PackageReference Include="System.IO.Pipelines" Version="7.0.0" />
     <Compile Include="../interop/dotnet/LibSRT.g.cs" />
   </ItemGroup>
-  
+
   <ItemGroup>
     <Using Include="System.Int32" Alias="SRTSOCKET" />
   </ItemGroup>
@@ -37,8 +37,8 @@
   </Target>
 
   <Target Name="FetchSRT" AfterTargets="FetchVcpkg" BeforeTargets="Build">
-<!--    <Exec Command="$(VcpkgDir)/vcpkg install libsrt &#45;&#45;triplet x64-windows"/>-->
-    <Exec Command="$(VcpkgDir)/vcpkg install libsrt --triplet x64-linux" />
+    <Exec Command="$(VcpkgDir)/vcpkg install libsrt --triplet x64-windows"/>
+<!--    <Exec Command="$(VcpkgDir)/vcpkg install libsrt &#45;&#45;triplet x64-linux" />-->
 <!--    <Exec Command="$(VcpkgDir)/vcpkg install libsrt &#45;&#45;triplet x64-osx"/>-->
 <!--    <Exec Command="$(VcpkgDir)/vcpkg install libsrt &#45;&#45;triplet arm64-windows"/>-->
 <!--    <Exec Command="$(VcpkgDir)/vcpkg install libsrt &#45;&#45;triplet arm64-linux"/>-->
@@ -48,7 +48,7 @@
   <Target Name="BuildBinding" AfterTargets="FetchSRT" BeforeTargets="Build">
     <Exec Command="cargo build" WorkingDirectory="$(SolutionDir)/interop"/>
   </Target>
-  
+
   <ItemGroup>
     <CLibPath Include="$(VcpkgDir)/installed/x64-linux/lib/libsrt.*"/>
     <RSLibPath Include="$(SolutionDir)/interop/target/debug/libsrt_interop.*"/>
@@ -57,5 +57,5 @@
     <Copy SourceFiles="@(CLibPath)" DestinationFolder="$(OutputPath)"/>
     <Copy SourceFiles="@(RSLibPath)" DestinationFolder="$(OutputPath)"/>
   </Target>
-  
+
 </Project>
