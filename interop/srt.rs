@@ -32,8 +32,8 @@ impl<T> ::std::fmt::Debug for __IncompleteArrayField<T> {
 }
 pub const SRT_VERSION_MAJOR: u32 = 1;
 pub const SRT_VERSION_MINOR: u32 = 5;
-pub const SRT_VERSION_PATCH: u32 = 0;
-pub const SRT_VERSION_STRING: &[u8; 6usize] = b"1.5.0\0";
+pub const SRT_VERSION_PATCH: u32 = 2;
+pub const SRT_VERSION_STRING: &[u8; 6usize] = b"1.5.2\0";
 pub const _SYS_TYPES_H: u32 = 1;
 pub const _FEATURES_H: u32 = 1;
 pub const _DEFAULT_SOURCE: u32 = 1;

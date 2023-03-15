@@ -10,7 +10,7 @@ namespace Spangle.Interop.Native
 {
     internal static unsafe partial class LibSRT
     {
-        const string __DllName = "libsrt-interop";
+        const string __DllName = "libsrt_interop";
 
         [DllImport(__DllName, EntryPoint = "csbindgen_srt_startup", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         public static extern int srt_startup();

@@ -30,14 +30,15 @@
 
   <ItemGroup>
     <Using Include="System.Int32" Alias="SRTSOCKET" />
+    <InternalsVisibleTo Include="Spangle.Net.Transport.SRT.Tests" />
   </ItemGroup>
 
   <Target Name="InitVcpkg" BeforeTargets="Build">
-    <Exec Command="$(VcpkgDir)/bootstrap-vcpkg.$(ScriptExt)" />
+<!--    <Exec Command="$(VcpkgDir)/bootstrap-vcpkg.$(ScriptExt)" />-->
   </Target>
 
   <Target Name="FetchSRT" AfterTargets="FetchVcpkg" BeforeTargets="Build">
-    <Exec Command="$(VcpkgDir)/vcpkg install libsrt --triplet x64-windows"/>
+<!--    <Exec Command="$(VcpkgDir)/vcpkg install libsrt &#45;&#45;triplet x64-windows"/>-->
 <!--    <Exec Command="$(VcpkgDir)/vcpkg install libsrt &#45;&#45;triplet x64-linux" />-->
 <!--    <Exec Command="$(VcpkgDir)/vcpkg install libsrt &#45;&#45;triplet x64-osx"/>-->
 <!--    <Exec Command="$(VcpkgDir)/vcpkg install libsrt &#45;&#45;triplet arm64-windows"/>-->
@@ -45,17 +46,17 @@
 <!--    <Exec Command="$(VcpkgDir)/vcpkg install libsrt &#45;&#45;triplet arm64-osx"/>-->
   </Target>
 
-  <Target Name="BuildBinding" AfterTargets="FetchSRT" BeforeTargets="Build">
-    <Exec Command="cargo build" WorkingDirectory="$(SolutionDir)/interop"/>
-  </Target>
+<!--  <Target Name="BuildBinding" AfterTargets="FetchSRT" BeforeTargets="Build">-->
+<!--    <Exec Command="cargo build" WorkingDirectory="$(SolutionDir)/interop" />-->
+<!--  </Target>-->
 
   <ItemGroup>
-    <CLibPath Include="$(VcpkgDir)/installed/x64-linux/lib/libsrt.*"/>
-    <RSLibPath Include="$(SolutionDir)/interop/target/debug/libsrt_interop.*"/>
+    <CLibPath Include="$(SolutionDir)/interop/target/debug/libsrt.*" />
+    <RSLibPath Include="$(SolutionDir)/interop/target/debug/libsrt_interop.*" />
   </ItemGroup>
   <Target Name="CopyArtifacts" AfterTargets="Build">
-    <Copy SourceFiles="@(CLibPath)" DestinationFolder="$(OutputPath)"/>
-    <Copy SourceFiles="@(RSLibPath)" DestinationFolder="$(OutputPath)"/>
+    <Copy SourceFiles="@(CLibPath)" DestinationFolder="$(OutputPath)" />
+    <Copy SourceFiles="@(RSLibPath)" DestinationFolder="$(OutputPath)" />
   </Target>
 
 </Project>
