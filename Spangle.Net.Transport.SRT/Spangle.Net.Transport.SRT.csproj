@@ -33,30 +33,31 @@
     <InternalsVisibleTo Include="Spangle.Net.Transport.SRT.Tests" />
   </ItemGroup>
 
-  <Target Name="InitVcpkg" BeforeTargets="Build">
-<!--    <Exec Command="$(VcpkgDir)/bootstrap-vcpkg.$(ScriptExt)" />-->
-  </Target>
+  <ItemGroup>
+    <Content Include="..\interop\target\debug\libsrt_interop.so">
+      <Link>libsrt_interop.so</Link>
+    </Content>
+  </ItemGroup>
 
-  <Target Name="FetchSRT" AfterTargets="FetchVcpkg" BeforeTargets="Build">
+<!--  <Target Name="InitVcpkg" BeforeTargets="Build">-->
+<!--    <Exec Command="$(VcpkgDir)/bootstrap-vcpkg.$(ScriptExt)" />-->
+<!--  </Target>-->
+
+<!--  <Target Name="FetchSRT" AfterTargets="FetchVcpkg" BeforeTargets="Build">-->
 <!--    <Exec Command="$(VcpkgDir)/vcpkg install libsrt &#45;&#45;triplet x64-windows"/>-->
 <!--    <Exec Command="$(VcpkgDir)/vcpkg install libsrt &#45;&#45;triplet x64-linux" />-->
 <!--    <Exec Command="$(VcpkgDir)/vcpkg install libsrt &#45;&#45;triplet x64-osx"/>-->
 <!--    <Exec Command="$(VcpkgDir)/vcpkg install libsrt &#45;&#45;triplet arm64-windows"/>-->
 <!--    <Exec Command="$(VcpkgDir)/vcpkg install libsrt &#45;&#45;triplet arm64-linux"/>-->
 <!--    <Exec Command="$(VcpkgDir)/vcpkg install libsrt &#45;&#45;triplet arm64-osx"/>-->
-  </Target>
+<!--  </Target>-->
 
 <!--  <Target Name="BuildBinding" AfterTargets="FetchSRT" BeforeTargets="Build">-->
 <!--    <Exec Command="cargo build" WorkingDirectory="$(SolutionDir)/interop" />-->
 <!--  </Target>-->
 
-  <ItemGroup>
-    <CLibPath Include="$(SolutionDir)/interop/target/debug/libsrt.*" />
-    <RSLibPath Include="$(SolutionDir)/interop/target/debug/libsrt_interop.*" />
-  </ItemGroup>
   <Target Name="CopyArtifacts" AfterTargets="Build">
-    <Copy SourceFiles="@(CLibPath)" DestinationFolder="$(OutputPath)" />
-    <Copy SourceFiles="@(RSLibPath)" DestinationFolder="$(OutputPath)" />
+    <Copy SourceFiles="@(Content)" DestinationFolder="$(OutputPath)" />
   </Target>
 
 </Project>

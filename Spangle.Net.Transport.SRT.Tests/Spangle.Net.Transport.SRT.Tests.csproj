@@ -30,9 +30,13 @@
   </ItemGroup>
 
   <ItemGroup>
-    <RSLibPath Include="$(SolutionDir)/interop/target/debug/libsrt_interop.*" />
+    <Content Include="..\interop\target\debug\libsrt_interop.so">
+      <Link>libsrt_interop.so</Link>
+    </Content>
   </ItemGroup>
+  
   <Target Name="CopyArtifacts" AfterTargets="Build">
-    <Copy SourceFiles="@(RSLibPath)" DestinationFolder="$(OutputPath)" />
+    <Copy SourceFiles="@(Content)" DestinationFolder="$(OutputPath)" />
   </Target>
+  
 </Project>

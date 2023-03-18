@@ -12,15 +12,15 @@ public class SRTListenerTest
         var ep = IPEndPoint.Parse("0.0.0.0:9999");
         var listener = new SRTListener(ep);
         listener.Start();
+        var cts = new CancellationTokenSource();
+        cts.CancelAfter(2000);
+        var ct = cts.Token;
 
-        var tReceiver = Task.Run(async () =>
-        {
-            var client = await listener.AcceptSRTClientAsync();
-            var res = await client.Pipe.Input.ReadAsync();
-            res.Buffer.ToArray().DumpHex(Console.Out.WriteLine);
-        });
+        var tAccept = listener.AcceptSRTClientAsync();
+        // var res = await client.Pipe.Input.ReadAsync(ct);
+        // res.Buffer.ToArray().DumpHex(Console.Out.WriteLine);
 
-        var proc = Process.Start("/usr/bin/ffmpeg", "-i -re -f lavfi -i testsrc2 -f ts srt://localhost:9999?mode=client");
-        await tReceiver;
+        // var proc = Process.Start("/usr/bin/ffmpeg", "-i -re -t 5 -f lavfi -i testsrc2 -f ts srt://localhost:9999?mode=client");
+        await tAccept;
     }
 }
