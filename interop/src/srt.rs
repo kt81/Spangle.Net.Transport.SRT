@@ -2,58 +2,45 @@
 
 pub const SRT_VERSION_MAJOR: u32 = 1;
 pub const SRT_VERSION_MINOR: u32 = 5;
-pub const SRT_VERSION_PATCH: u32 = 2;
-pub const SRT_VERSION_STRING: &[u8; 6usize] = b"1.5.2\0";
+pub const SRT_VERSION_PATCH: u32 = 1;
+pub const SRT_VERSION_STRING: &[u8; 6usize] = b"1.5.1\0";
 pub const AF_UNSPEC: u32 = 0;
-pub const AF_LOCAL: u32 = 1;
 pub const AF_UNIX: u32 = 1;
-pub const AF_FILE: u32 = 1;
 pub const AF_INET: u32 = 2;
-pub const AF_AX25: u32 = 3;
-pub const AF_IPX: u32 = 4;
-pub const AF_APPLETALK: u32 = 5;
-pub const AF_NETROM: u32 = 6;
-pub const AF_BRIDGE: u32 = 7;
-pub const AF_ATMPVC: u32 = 8;
-pub const AF_X25: u32 = 9;
-pub const AF_INET6: u32 = 10;
-pub const AF_ROSE: u32 = 11;
+pub const AF_IMPLINK: u32 = 3;
+pub const AF_PUP: u32 = 4;
+pub const AF_CHAOS: u32 = 5;
+pub const AF_NS: u32 = 6;
+pub const AF_IPX: u32 = 6;
+pub const AF_ISO: u32 = 7;
+pub const AF_OSI: u32 = 7;
+pub const AF_ECMA: u32 = 8;
+pub const AF_DATAKIT: u32 = 9;
+pub const AF_CCITT: u32 = 10;
+pub const AF_SNA: u32 = 11;
 pub const AF_DECnet: u32 = 12;
-pub const AF_NETBEUI: u32 = 13;
-pub const AF_SECURITY: u32 = 14;
-pub const AF_KEY: u32 = 15;
-pub const AF_NETLINK: u32 = 16;
-pub const AF_ROUTE: u32 = 16;
-pub const AF_PACKET: u32 = 17;
-pub const AF_ASH: u32 = 18;
-pub const AF_ECONET: u32 = 19;
-pub const AF_ATMSVC: u32 = 20;
-pub const AF_RDS: u32 = 21;
-pub const AF_SNA: u32 = 22;
-pub const AF_IRDA: u32 = 23;
-pub const AF_PPPOX: u32 = 24;
-pub const AF_WANPIPE: u32 = 25;
-pub const AF_LLC: u32 = 26;
-pub const AF_IB: u32 = 27;
-pub const AF_MPLS: u32 = 28;
-pub const AF_CAN: u32 = 29;
-pub const AF_TIPC: u32 = 30;
-pub const AF_BLUETOOTH: u32 = 31;
-pub const AF_IUCV: u32 = 32;
-pub const AF_RXRPC: u32 = 33;
-pub const AF_ISDN: u32 = 34;
-pub const AF_PHONET: u32 = 35;
-pub const AF_IEEE802154: u32 = 36;
-pub const AF_CAIF: u32 = 37;
-pub const AF_ALG: u32 = 38;
-pub const AF_NFC: u32 = 39;
-pub const AF_VSOCK: u32 = 40;
-pub const AF_KCM: u32 = 41;
-pub const AF_QIPCRTR: u32 = 42;
-pub const AF_SMC: u32 = 43;
-pub const AF_XDP: u32 = 44;
-pub const AF_MCTP: u32 = 45;
-pub const AF_MAX: u32 = 46;
+pub const AF_DLI: u32 = 13;
+pub const AF_LAT: u32 = 14;
+pub const AF_HYLINK: u32 = 15;
+pub const AF_APPLETALK: u32 = 16;
+pub const AF_NETBIOS: u32 = 17;
+pub const AF_VOICEVIEW: u32 = 18;
+pub const AF_FIREFOX: u32 = 19;
+pub const AF_UNKNOWN1: u32 = 20;
+pub const AF_BAN: u32 = 21;
+pub const AF_ATM: u32 = 22;
+pub const AF_INET6: u32 = 23;
+pub const AF_CLUSTER: u32 = 24;
+pub const AF_12844: u32 = 25;
+pub const AF_IRDA: u32 = 26;
+pub const AF_NETDES: u32 = 28;
+pub const AF_TCNPROCESS: u32 = 29;
+pub const AF_TCNMESSAGE: u32 = 30;
+pub const AF_ICLFXBM: u32 = 31;
+pub const AF_BTH: u32 = 32;
+pub const AF_LINK: u32 = 33;
+pub const AF_HYPERV: u32 = 34;
+pub const AF_MAX: u32 = 35;
 pub const SRT_LOG_LEVEL_MIN: u32 = 2;
 pub const SRT_LOG_LEVEL_MAX: u32 = 7;
 pub const SRT_LOGF_DISABLE_TIME: u32 = 1;
@@ -104,12 +91,15 @@ pub const SRT_SYNC_CLOCK_POSIX_GETTIMEOFDAY: u32 = 4;
 pub const SRT_SYNC_CLOCK_AMD64_RDTSC: u32 = 5;
 pub const SRT_SYNC_CLOCK_IA32_RDTSC: u32 = 6;
 pub const SRT_SYNC_CLOCK_IA64_ITC: u32 = 7;
-pub type sa_family_t = ::std::os::raw::c_ushort;
+pub type USHORT = ::std::os::raw::c_ushort;
+pub type UINT_PTR = ::std::os::raw::c_ulonglong;
+pub type CHAR = ::std::os::raw::c_char;
+pub type ADDRESS_FAMILY = USHORT;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct sockaddr {
-    pub sa_family: sa_family_t,
-    pub sa_data: [::std::os::raw::c_char; 14usize],
+    pub sa_family: ADDRESS_FAMILY,
+    pub sa_data: [CHAR; 14usize],
 }
 #[test]
 fn bindgen_test_layout_sockaddr() {
@@ -149,9 +139,10 @@ fn bindgen_test_layout_sockaddr() {
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct sockaddr_storage {
-    pub ss_family: sa_family_t,
-    pub __ss_padding: [::std::os::raw::c_char; 118usize],
-    pub __ss_align: ::std::os::raw::c_ulong,
+    pub ss_family: ADDRESS_FAMILY,
+    pub __ss_pad1: [CHAR; 6usize],
+    pub __ss_align: ::std::os::raw::c_longlong,
+    pub __ss_pad2: [CHAR; 112usize],
 }
 #[test]
 fn bindgen_test_layout_sockaddr_storage() {
@@ -178,18 +169,18 @@ fn bindgen_test_layout_sockaddr_storage() {
         )
     );
     assert_eq!(
-        unsafe { ::std::ptr::addr_of!((*ptr).__ss_padding) as usize - ptr as usize },
+        unsafe { ::std::ptr::addr_of!((*ptr).__ss_pad1) as usize - ptr as usize },
         2usize,
         concat!(
             "Offset of field: ",
             stringify!(sockaddr_storage),
             "::",
-            stringify!(__ss_padding)
+            stringify!(__ss_pad1)
         )
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).__ss_align) as usize - ptr as usize },
-        120usize,
+        8usize,
         concat!(
             "Offset of field: ",
             stringify!(sockaddr_storage),
@@ -197,259 +188,18 @@ fn bindgen_test_layout_sockaddr_storage() {
             stringify!(__ss_align)
         )
     );
-}
-pub type in_addr_t = u32;
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct in_addr {
-    pub s_addr: in_addr_t,
-}
-#[test]
-fn bindgen_test_layout_in_addr() {
-    const UNINIT: ::std::mem::MaybeUninit<in_addr> = ::std::mem::MaybeUninit::uninit();
-    let ptr = UNINIT.as_ptr();
     assert_eq!(
-        ::std::mem::size_of::<in_addr>(),
-        4usize,
-        concat!("Size of: ", stringify!(in_addr))
-    );
-    assert_eq!(
-        ::std::mem::align_of::<in_addr>(),
-        4usize,
-        concat!("Alignment of ", stringify!(in_addr))
-    );
-    assert_eq!(
-        unsafe { ::std::ptr::addr_of!((*ptr).s_addr) as usize - ptr as usize },
-        0usize,
-        concat!(
-            "Offset of field: ",
-            stringify!(in_addr),
-            "::",
-            stringify!(s_addr)
-        )
-    );
-}
-pub type in_port_t = u16;
-#[repr(C)]
-#[derive(Copy, Clone)]
-pub struct in6_addr {
-    pub __in6_u: in6_addr__bindgen_ty_1,
-}
-#[repr(C)]
-#[derive(Copy, Clone)]
-pub union in6_addr__bindgen_ty_1 {
-    pub __u6_addr8: [u8; 16usize],
-    pub __u6_addr16: [u16; 8usize],
-    pub __u6_addr32: [u32; 4usize],
-}
-#[test]
-fn bindgen_test_layout_in6_addr__bindgen_ty_1() {
-    const UNINIT: ::std::mem::MaybeUninit<in6_addr__bindgen_ty_1> =
-        ::std::mem::MaybeUninit::uninit();
-    let ptr = UNINIT.as_ptr();
-    assert_eq!(
-        ::std::mem::size_of::<in6_addr__bindgen_ty_1>(),
+        unsafe { ::std::ptr::addr_of!((*ptr).__ss_pad2) as usize - ptr as usize },
         16usize,
-        concat!("Size of: ", stringify!(in6_addr__bindgen_ty_1))
-    );
-    assert_eq!(
-        ::std::mem::align_of::<in6_addr__bindgen_ty_1>(),
-        4usize,
-        concat!("Alignment of ", stringify!(in6_addr__bindgen_ty_1))
-    );
-    assert_eq!(
-        unsafe { ::std::ptr::addr_of!((*ptr).__u6_addr8) as usize - ptr as usize },
-        0usize,
         concat!(
             "Offset of field: ",
-            stringify!(in6_addr__bindgen_ty_1),
+            stringify!(sockaddr_storage),
             "::",
-            stringify!(__u6_addr8)
-        )
-    );
-    assert_eq!(
-        unsafe { ::std::ptr::addr_of!((*ptr).__u6_addr16) as usize - ptr as usize },
-        0usize,
-        concat!(
-            "Offset of field: ",
-            stringify!(in6_addr__bindgen_ty_1),
-            "::",
-            stringify!(__u6_addr16)
-        )
-    );
-    assert_eq!(
-        unsafe { ::std::ptr::addr_of!((*ptr).__u6_addr32) as usize - ptr as usize },
-        0usize,
-        concat!(
-            "Offset of field: ",
-            stringify!(in6_addr__bindgen_ty_1),
-            "::",
-            stringify!(__u6_addr32)
+            stringify!(__ss_pad2)
         )
     );
 }
-#[test]
-fn bindgen_test_layout_in6_addr() {
-    const UNINIT: ::std::mem::MaybeUninit<in6_addr> = ::std::mem::MaybeUninit::uninit();
-    let ptr = UNINIT.as_ptr();
-    assert_eq!(
-        ::std::mem::size_of::<in6_addr>(),
-        16usize,
-        concat!("Size of: ", stringify!(in6_addr))
-    );
-    assert_eq!(
-        ::std::mem::align_of::<in6_addr>(),
-        4usize,
-        concat!("Alignment of ", stringify!(in6_addr))
-    );
-    assert_eq!(
-        unsafe { ::std::ptr::addr_of!((*ptr).__in6_u) as usize - ptr as usize },
-        0usize,
-        concat!(
-            "Offset of field: ",
-            stringify!(in6_addr),
-            "::",
-            stringify!(__in6_u)
-        )
-    );
-}
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct sockaddr_in {
-    pub sin_family: sa_family_t,
-    pub sin_port: in_port_t,
-    pub sin_addr: in_addr,
-    pub sin_zero: [::std::os::raw::c_uchar; 8usize],
-}
-#[test]
-fn bindgen_test_layout_sockaddr_in() {
-    const UNINIT: ::std::mem::MaybeUninit<sockaddr_in> = ::std::mem::MaybeUninit::uninit();
-    let ptr = UNINIT.as_ptr();
-    assert_eq!(
-        ::std::mem::size_of::<sockaddr_in>(),
-        16usize,
-        concat!("Size of: ", stringify!(sockaddr_in))
-    );
-    assert_eq!(
-        ::std::mem::align_of::<sockaddr_in>(),
-        4usize,
-        concat!("Alignment of ", stringify!(sockaddr_in))
-    );
-    assert_eq!(
-        unsafe { ::std::ptr::addr_of!((*ptr).sin_family) as usize - ptr as usize },
-        0usize,
-        concat!(
-            "Offset of field: ",
-            stringify!(sockaddr_in),
-            "::",
-            stringify!(sin_family)
-        )
-    );
-    assert_eq!(
-        unsafe { ::std::ptr::addr_of!((*ptr).sin_port) as usize - ptr as usize },
-        2usize,
-        concat!(
-            "Offset of field: ",
-            stringify!(sockaddr_in),
-            "::",
-            stringify!(sin_port)
-        )
-    );
-    assert_eq!(
-        unsafe { ::std::ptr::addr_of!((*ptr).sin_addr) as usize - ptr as usize },
-        4usize,
-        concat!(
-            "Offset of field: ",
-            stringify!(sockaddr_in),
-            "::",
-            stringify!(sin_addr)
-        )
-    );
-    assert_eq!(
-        unsafe { ::std::ptr::addr_of!((*ptr).sin_zero) as usize - ptr as usize },
-        8usize,
-        concat!(
-            "Offset of field: ",
-            stringify!(sockaddr_in),
-            "::",
-            stringify!(sin_zero)
-        )
-    );
-}
-#[repr(C)]
-#[derive(Copy, Clone)]
-pub struct sockaddr_in6 {
-    pub sin6_family: sa_family_t,
-    pub sin6_port: in_port_t,
-    pub sin6_flowinfo: u32,
-    pub sin6_addr: in6_addr,
-    pub sin6_scope_id: u32,
-}
-#[test]
-fn bindgen_test_layout_sockaddr_in6() {
-    const UNINIT: ::std::mem::MaybeUninit<sockaddr_in6> = ::std::mem::MaybeUninit::uninit();
-    let ptr = UNINIT.as_ptr();
-    assert_eq!(
-        ::std::mem::size_of::<sockaddr_in6>(),
-        28usize,
-        concat!("Size of: ", stringify!(sockaddr_in6))
-    );
-    assert_eq!(
-        ::std::mem::align_of::<sockaddr_in6>(),
-        4usize,
-        concat!("Alignment of ", stringify!(sockaddr_in6))
-    );
-    assert_eq!(
-        unsafe { ::std::ptr::addr_of!((*ptr).sin6_family) as usize - ptr as usize },
-        0usize,
-        concat!(
-            "Offset of field: ",
-            stringify!(sockaddr_in6),
-            "::",
-            stringify!(sin6_family)
-        )
-    );
-    assert_eq!(
-        unsafe { ::std::ptr::addr_of!((*ptr).sin6_port) as usize - ptr as usize },
-        2usize,
-        concat!(
-            "Offset of field: ",
-            stringify!(sockaddr_in6),
-            "::",
-            stringify!(sin6_port)
-        )
-    );
-    assert_eq!(
-        unsafe { ::std::ptr::addr_of!((*ptr).sin6_flowinfo) as usize - ptr as usize },
-        4usize,
-        concat!(
-            "Offset of field: ",
-            stringify!(sockaddr_in6),
-            "::",
-            stringify!(sin6_flowinfo)
-        )
-    );
-    assert_eq!(
-        unsafe { ::std::ptr::addr_of!((*ptr).sin6_addr) as usize - ptr as usize },
-        8usize,
-        concat!(
-            "Offset of field: ",
-            stringify!(sockaddr_in6),
-            "::",
-            stringify!(sin6_addr)
-        )
-    );
-    assert_eq!(
-        unsafe { ::std::ptr::addr_of!((*ptr).sin6_scope_id) as usize - ptr as usize },
-        24usize,
-        concat!(
-            "Offset of field: ",
-            stringify!(sockaddr_in6),
-            "::",
-            stringify!(sin6_scope_id)
-        )
-    );
-}
+pub type SOCKET = UINT_PTR;
 pub type SRT_LOG_HANDLER_FN = ::std::option::Option<
     unsafe extern "C" fn(
         opaque: *mut ::std::os::raw::c_void,
@@ -461,7 +211,7 @@ pub type SRT_LOG_HANDLER_FN = ::std::option::Option<
     ),
 >;
 pub type SRTSOCKET = i32;
-pub type SYSSOCKET = ::std::os::raw::c_int;
+pub type SYSSOCKET = SOCKET;
 pub type UDPSOCKET = SYSSOCKET;
 pub const SRT_SOCKSTATUS_SRTS_INIT: SRT_SOCKSTATUS = 1;
 pub const SRT_SOCKSTATUS_SRTS_OPENED: SRT_SOCKSTATUS = 2;
@@ -472,7 +222,7 @@ pub const SRT_SOCKSTATUS_SRTS_BROKEN: SRT_SOCKSTATUS = 6;
 pub const SRT_SOCKSTATUS_SRTS_CLOSING: SRT_SOCKSTATUS = 7;
 pub const SRT_SOCKSTATUS_SRTS_CLOSED: SRT_SOCKSTATUS = 8;
 pub const SRT_SOCKSTATUS_SRTS_NONEXIST: SRT_SOCKSTATUS = 9;
-pub type SRT_SOCKSTATUS = ::std::os::raw::c_uint;
+pub type SRT_SOCKSTATUS = ::std::os::raw::c_int;
 pub const SRT_SOCKOPT_SRTO_MSS: SRT_SOCKOPT = 0;
 pub const SRT_SOCKOPT_SRTO_SNDSYN: SRT_SOCKOPT = 1;
 pub const SRT_SOCKOPT_SRTO_RCVSYN: SRT_SOCKOPT = 2;
@@ -533,7 +283,7 @@ pub const SRT_SOCKOPT_SRTO_GROUPTYPE: SRT_SOCKOPT = 59;
 pub const SRT_SOCKOPT_SRTO_PACKETFILTER: SRT_SOCKOPT = 60;
 pub const SRT_SOCKOPT_SRTO_RETRANSMITALGO: SRT_SOCKOPT = 61;
 pub const SRT_SOCKOPT_SRTO_E_SIZE: SRT_SOCKOPT = 62;
-pub type SRT_SOCKOPT = ::std::os::raw::c_uint;
+pub type SRT_SOCKOPT = ::std::os::raw::c_int;
 pub const SRT_LIVE_DEF_PLSIZE: ::std::os::raw::c_int = 1316;
 pub const SRT_LIVE_MAX_PLSIZE: ::std::os::raw::c_int = 1456;
 pub const SRT_LIVE_DEF_LATENCY_MS: ::std::os::raw::c_int = 120;
@@ -2012,13 +1762,13 @@ pub const SRT_GROUP_TYPE_SRT_GTYPE_UNDEFINED: SRT_GROUP_TYPE = 0;
 pub const SRT_GROUP_TYPE_SRT_GTYPE_BROADCAST: SRT_GROUP_TYPE = 1;
 pub const SRT_GROUP_TYPE_SRT_GTYPE_BACKUP: SRT_GROUP_TYPE = 2;
 pub const SRT_GROUP_TYPE_SRT_GTYPE_E_END: SRT_GROUP_TYPE = 3;
-pub type SRT_GROUP_TYPE = ::std::os::raw::c_uint;
+pub type SRT_GROUP_TYPE = ::std::os::raw::c_int;
 pub const SRT_GFLAG_SYNCONMSG: u32 = 1;
 pub const SRT_MemberStatus_SRT_GST_PENDING: SRT_MemberStatus = 0;
 pub const SRT_MemberStatus_SRT_GST_IDLE: SRT_MemberStatus = 1;
 pub const SRT_MemberStatus_SRT_GST_RUNNING: SRT_MemberStatus = 2;
 pub const SRT_MemberStatus_SRT_GST_BROKEN: SRT_MemberStatus = 3;
-pub type SRT_MemberStatus = ::std::os::raw::c_uint;
+pub type SRT_MemberStatus = ::std::os::raw::c_int;
 pub use self::SRT_MemberStatus as SRT_MEMBERSTATUS;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]

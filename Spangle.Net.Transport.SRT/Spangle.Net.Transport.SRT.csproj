@@ -34,7 +34,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="..\interop\target\debug\libsrt_interop.so">
+    <Content Include="..\interop\target\debug\srt_interop.dll">
       <Link>libsrt_interop.so</Link>
     </Content>
   </ItemGroup>

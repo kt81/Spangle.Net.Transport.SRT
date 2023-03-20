@@ -27,18 +27,20 @@ fn main() {
         .into_iter()
         .collect(),
     );
-    let mut vcpkg_root = std::env::current_dir().unwrap();
-    vcpkg_root.push("vcpkg");
-    let mut openssl_root = vcpkg_root.clone();
-    openssl_root.push("packages/openssl_x64-linux");
-    let mut include_dir = openssl_root.clone();
-    include_dir.push("include");
-    let mut crypto_lib = openssl_root.clone();
-    crypto_lib.push("lib/libcrypto.a");
+
+    let arch = "x64-windows-static-md";
+    // let arch = "x64-linux";
+
+    let vcpkg_root = std::env::current_dir().unwrap().join("vcpkg");
+    let toolchain_file = vcpkg_root.clone().join("scripts").join("buildsystems").join("vcpkg.cmake");
+    let openssl_root = vcpkg_root.clone().join("packages").join("openssl_".to_owned() + arch);
+    let include_dir = openssl_root.clone().join("include");
+    let crypto_lib = openssl_root.clone().join("lib").join("libcrypto.lib");
 
     let dst = Config::new("srt")
         // .very_verbose(true)
-        // .define("CMAKE_TOOLCHAIN_FILE", root + "\\vcpkg\\scripts\\buildsystems\\vcpkg.cmake")
+        .define("CMAKE_TOOLCHAIN_FILE", toolchain_file)
+        .define("CMAKE_CXX_FLAGS", "/EHsc")
         .define("ENABLE_STATIC", "ON")
         .define("ENABLE_STDCXX_SYNC", "ON")
         .define("OPENSSL_ROOT_DIR", openssl_root)
@@ -49,19 +51,23 @@ fn main() {
     let mut lib_path = dst.clone();
     lib_path.push("lib");
     println!("cargo:rustc-link-search=native={}", lib_path.display());
-    println!("cargo:rustc-link-search=native=vcpkg/installed/x64-linux/lib");
+    println!("cargo:rustc-link-search=native=vcpkg/installed/{}/lib", arch);
+    // println!("cargo:rustc-link-lib=dylib=stdc++");
+    println!("cargo:rustc-link-lib=static=srt_static");
+    // println!("cargo:rustc-link-lib=static=crypto");
+    println!("cargo:rustc-link-lib=static=libcrypto");
+    println!("cargo:rustc-link-lib=dylib=user32");
+    println!("cargo:rustc-link-lib=dylib=crypt32");
 
-    println!("cargo:rustc-link-lib=dylib=stdc++");
-    println!("cargo:rustc-link-lib=static=srt");
-    println!("cargo:rustc-link-lib=static=crypto");
-
-    let mut header = dst.clone();
-    header.push("include/srt/srt.h");
+    let header = dst.clone()
+        .join("include")
+        .join("srt")
+        .join("srt.h");
     bindgen::Builder::default()
         .header(header.to_string_lossy())
         .parse_callbacks(Box::new(ignored_macros))
         .allowlist_function("^srt_.*")
-        .allowlist_type("^sockaddr.*")
+        // .allowlist_type("^sockaddr.*")
         .allowlist_var("^(?:AF_|SRT_).*")
         .generate()
         .unwrap()
@@ -76,7 +82,7 @@ fn main() {
         .csharp_class_name("LibSRT")
         .csharp_class_accessibility("internal")
         .csharp_namespace("Spangle.Interop.Native")
-        .csharp_dll_name("libsrt_interop")
+        .csharp_dll_name("srt_interop")
         .generate_to_file("src/srt_ffi.rs", "dotnet/LibSRT.g.cs")
         .unwrap();
 }

@@ -10,7 +10,7 @@ namespace Spangle.Interop.Native
 {
     internal static unsafe partial class LibSRT
     {
-        const string __DllName = "libsrt_interop";
+        const string __DllName = "srt_interop";
 
         [DllImport(__DllName, EntryPoint = "csbindgen_srt_startup", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         public static extern int srt_startup();
@@ -28,7 +28,7 @@ namespace Spangle.Interop.Native
         public static extern int srt_bind(int u, sockaddr* name, int namelen);
 
         [DllImport(__DllName, EntryPoint = "csbindgen_srt_bind_acquire", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        public static extern int srt_bind_acquire(int u, int sys_udp_sock);
+        public static extern int srt_bind_acquire(int u, ulong sys_udp_sock);
 
         [DllImport(__DllName, EntryPoint = "csbindgen_srt_listen", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         public static extern int srt_listen(int u, int backlog);
@@ -67,16 +67,16 @@ namespace Spangle.Interop.Native
         public static extern int srt_getsockname(int u, sockaddr* name, int* namelen);
 
         [DllImport(__DllName, EntryPoint = "csbindgen_srt_getsockopt", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        public static extern int srt_getsockopt(int u, int level, uint optname, void* optval, int* optlen);
+        public static extern int srt_getsockopt(int u, int level, int optname, void* optval, int* optlen);
 
         [DllImport(__DllName, EntryPoint = "csbindgen_srt_setsockopt", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        public static extern int srt_setsockopt(int u, int level, uint optname, void* optval, int optlen);
+        public static extern int srt_setsockopt(int u, int level, int optname, void* optval, int optlen);
 
         [DllImport(__DllName, EntryPoint = "csbindgen_srt_getsockflag", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        public static extern int srt_getsockflag(int u, uint opt, void* optval, int* optlen);
+        public static extern int srt_getsockflag(int u, int opt, void* optval, int* optlen);
 
         [DllImport(__DllName, EntryPoint = "csbindgen_srt_setsockflag", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        public static extern int srt_setsockflag(int u, uint opt, void* optval, int optlen);
+        public static extern int srt_setsockflag(int u, int opt, void* optval, int optlen);
 
         [DllImport(__DllName, EntryPoint = "csbindgen_srt_msgctrl_init", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         public static extern void srt_msgctrl_init(SRT_MsgCtrl_* mctrl);
@@ -124,7 +124,7 @@ namespace Spangle.Interop.Native
         public static extern int srt_bistats(int u, CBytePerfMon* perf, int clear, int instantaneous);
 
         [DllImport(__DllName, EntryPoint = "csbindgen_srt_getsockstate", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        public static extern uint srt_getsockstate(int u);
+        public static extern int srt_getsockstate(int u);
 
         [DllImport(__DllName, EntryPoint = "csbindgen_srt_epoll_create", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         public static extern int srt_epoll_create();
@@ -136,22 +136,22 @@ namespace Spangle.Interop.Native
         public static extern int srt_epoll_add_usock(int eid, int u, int* events);
 
         [DllImport(__DllName, EntryPoint = "csbindgen_srt_epoll_add_ssock", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        public static extern int srt_epoll_add_ssock(int eid, int s, int* events);
+        public static extern int srt_epoll_add_ssock(int eid, ulong s, int* events);
 
         [DllImport(__DllName, EntryPoint = "csbindgen_srt_epoll_remove_usock", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         public static extern int srt_epoll_remove_usock(int eid, int u);
 
         [DllImport(__DllName, EntryPoint = "csbindgen_srt_epoll_remove_ssock", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        public static extern int srt_epoll_remove_ssock(int eid, int s);
+        public static extern int srt_epoll_remove_ssock(int eid, ulong s);
 
         [DllImport(__DllName, EntryPoint = "csbindgen_srt_epoll_update_usock", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         public static extern int srt_epoll_update_usock(int eid, int u, int* events);
 
         [DllImport(__DllName, EntryPoint = "csbindgen_srt_epoll_update_ssock", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        public static extern int srt_epoll_update_ssock(int eid, int s, int* events);
+        public static extern int srt_epoll_update_ssock(int eid, ulong s, int* events);
 
         [DllImport(__DllName, EntryPoint = "csbindgen_srt_epoll_wait", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        public static extern int srt_epoll_wait(int eid, int* readfds, int* rnum, int* writefds, int* wnum, long msTimeOut, int* lrfds, int* lrnum, int* lwfds, int* lwnum);
+        public static extern int srt_epoll_wait(int eid, int* readfds, int* rnum, int* writefds, int* wnum, long msTimeOut, ulong* lrfds, int* lrnum, ulong* lwfds, int* lwnum);
 
         [DllImport(__DllName, EntryPoint = "csbindgen_srt_epoll_uwait", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         public static extern int srt_epoll_uwait(int eid, SRT_EPOLL_EVENT_STR* fdsSet, int fdsSize, long msTimeOut);
@@ -205,7 +205,7 @@ namespace Spangle.Interop.Native
         public static extern int srt_clock_type();
 
         [DllImport(__DllName, EntryPoint = "csbindgen_srt_create_group", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        public static extern int srt_create_group(uint arg1);
+        public static extern int srt_create_group(int arg1);
 
         [DllImport(__DllName, EntryPoint = "csbindgen_srt_groupof", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         public static extern int srt_groupof(int socket);
@@ -220,7 +220,7 @@ namespace Spangle.Interop.Native
         public static extern void srt_delete_config(SRT_SocketOptionObject* config);
 
         [DllImport(__DllName, EntryPoint = "csbindgen_srt_config_add", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        public static extern int srt_config_add(SRT_SocketOptionObject* config, uint option, void* contents, int len);
+        public static extern int srt_config_add(SRT_SocketOptionObject* config, int option, void* contents, int len);
 
         [DllImport(__DllName, EntryPoint = "csbindgen_srt_prepare_endpoint", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         public static extern SRT_GroupMemberConfig_ srt_prepare_endpoint(sockaddr* src, sockaddr* adr, int namelen);
@@ -242,8 +242,9 @@ namespace Spangle.Interop.Native
     internal unsafe partial struct sockaddr_storage
     {
         public ushort ss_family;
-        public fixed byte __ss_padding[118];
-        public CULong __ss_align;
+        public fixed byte __ss_pad1[6];
+        public long __ss_align;
+        public fixed byte __ss_pad2[112];
     }
 
     [StructLayout(LayoutKind.Sequential)]
@@ -359,9 +360,9 @@ namespace Spangle.Interop.Native
     {
         public int id;
         public sockaddr_storage peeraddr;
-        public uint sockstate;
+        public int sockstate;
         public ushort weight;
-        public uint memberstate;
+        public int memberstate;
         public int result;
         public int token;
     }
