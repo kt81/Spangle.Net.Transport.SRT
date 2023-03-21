@@ -69,6 +69,7 @@ fn main() {
         .allowlist_function("^srt_.*")
         // .allowlist_type("^sockaddr.*")
         .allowlist_var("^(?:AF_|SRT_).*")
+        .allowlist_type("^SRT_.*")
         .generate()
         .unwrap()
         .write_to_file("src/srt.rs")

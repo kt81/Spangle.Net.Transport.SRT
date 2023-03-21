@@ -24,6 +24,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="7.0.0" />
     <PackageReference Include="System.IO.Pipelines" Version="7.0.0" />
     <Compile Include="../interop/dotnet/LibSRT.g.cs" />
   </ItemGroup>
@@ -34,30 +35,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="..\interop\target\debug\srt_interop.dll">
-      <Link>libsrt_interop.so</Link>
+    <Content Include="..\interop\target\debug\srt_interop.*" Exclude="**\*.lib;**\*.exp">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
-
-<!--  <Target Name="InitVcpkg" BeforeTargets="Build">-->
-<!--    <Exec Command="$(VcpkgDir)/bootstrap-vcpkg.$(ScriptExt)" />-->
-<!--  </Target>-->
-
-<!--  <Target Name="FetchSRT" AfterTargets="FetchVcpkg" BeforeTargets="Build">-->
-<!--    <Exec Command="$(VcpkgDir)/vcpkg install libsrt &#45;&#45;triplet x64-windows"/>-->
-<!--    <Exec Command="$(VcpkgDir)/vcpkg install libsrt &#45;&#45;triplet x64-linux" />-->
-<!--    <Exec Command="$(VcpkgDir)/vcpkg install libsrt &#45;&#45;triplet x64-osx"/>-->
-<!--    <Exec Command="$(VcpkgDir)/vcpkg install libsrt &#45;&#45;triplet arm64-windows"/>-->
-<!--    <Exec Command="$(VcpkgDir)/vcpkg install libsrt &#45;&#45;triplet arm64-linux"/>-->
-<!--    <Exec Command="$(VcpkgDir)/vcpkg install libsrt &#45;&#45;triplet arm64-osx"/>-->
-<!--  </Target>-->
-
-<!--  <Target Name="BuildBinding" AfterTargets="FetchSRT" BeforeTargets="Build">-->
-<!--    <Exec Command="cargo build" WorkingDirectory="$(SolutionDir)/interop" />-->
-<!--  </Target>-->
-
-  <Target Name="CopyArtifacts" AfterTargets="Build">
-    <Copy SourceFiles="@(Content)" DestinationFolder="$(OutputPath)" />
-  </Target>
 
 </Project>

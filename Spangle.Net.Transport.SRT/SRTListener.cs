@@ -2,6 +2,8 @@
 using System.Net;
 using System.Net.Sockets;
 using System.Runtime.InteropServices;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Spangle.Interop.Native;
 using static Spangle.Interop.Native.LibSRT;
 
@@ -19,6 +21,7 @@ public sealed class SRTListener : IDisposable
 
     private readonly IPEndPoint _serverSocketEP;
     private readonly SRTSOCKET  _handle;
+    private readonly ILogger    _logger;
 
     private bool _active;
     private bool _disposed;
@@ -33,10 +36,12 @@ public sealed class SRTListener : IDisposable
         }
     }
 
-    public SRTListener(IPEndPoint localEP)
+    public SRTListener(IPEndPoint localEP, ILogger? logger = null)
     {
-        ThrowHelper.ThrowIfNull(localEP);
+        ArgumentNullException.ThrowIfNull(localEP);
         _serverSocketEP = localEP;
+        _logger = logger ?? new NullLogger<SRTListener>();
+
         _handle = srt_create_socket();
         if (_handle == SRT_ERROR)
         {
@@ -51,28 +56,43 @@ public sealed class SRTListener : IDisposable
             return;
         }
 
+        var falsy = 0;
+        srt_setsockopt(_handle, 0, SRT_SOCKOPT.SRTO_RCVSYN, &falsy, sizeof(int)).ThrowIfError();
+
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            var mss = 1052;
+            srt_setsockopt(_handle, 0, SRT_SOCKOPT.SRTO_MSS, &mss, sizeof(int)).ThrowIfError();
+        }
+
         IntPtr pSockAddrIn = Marshal.AllocCoTaskMem(s_socketAddressSize);
         try
         {
-            var sin = SockaddrIn(_serverSocketEP, (byte*)pSockAddrIn.ToPointer(), s_socketAddressSize);
-            int result = srt_bind(_handle, sin, s_socketAddressSize);
-            ThrowHelper.ThrowIfError(result);
-            result = srt_listen(_handle, backlog);
-            ThrowHelper.ThrowIfError(result);
+            var sin = WriteSockaddrIn(_serverSocketEP, (byte*)pSockAddrIn.ToPointer(), s_socketAddressSize);
+            srt_bind(_handle, sin, s_socketAddressSize).ThrowIfError();
+            srt_listen(_handle, backlog).ThrowIfError();
         }
         finally
         {
             Marshal.FreeCoTaskMem(pSockAddrIn);
         }
 
+        _logger.LogInformation("{} started to listen on {}:{}", nameof(SRTListener), _serverSocketEP.Address.ToString(),
+            _serverSocketEP.Port);
+
+        // // add to epoll the listening handle
+        // _listenEpollId = srt_epoll_create().ThrowIfError();
+        // int events = SRT_EPOLL_OPT.SRT_EPOLL_IN | SRT_EPOLL_OPT.SRT_EPOLL_ERR;
+        // srt_epoll_add_usock(_listenEpollId, _handle, &events).ThrowIfError();
+
         _active = true;
     }
 
-    public ValueTask<SRTClient> AcceptSRTClientAsync()
+    public SRTClient AcceptSRTClient()
     {
         if (!_active)
         {
-            throw new InvalidOperationException("SRTListener has not Start-ed.");
+            throw new InvalidOperationException("SRTListener has not Start()-ed.");
         }
 
         IntPtr pPeerAddr = IntPtr.Zero;
@@ -93,7 +113,7 @@ public sealed class SRTListener : IDisposable
 
             var ep = ConvertToEndPoint(pPeerAddr);
 
-            return ValueTask.FromResult(new SRTClient(peerHandle, ep, _tokenSource.Token));
+            return new SRTClient(peerHandle, ep, _tokenSource.Token);
         }
         finally
         {

@@ -16,11 +16,14 @@ public class SRTListenerTest
         cts.CancelAfter(2000);
         var ct = cts.Token;
 
-        var tAccept = listener.AcceptSRTClientAsync();
-        // var res = await client.Pipe.Input.ReadAsync(ct);
-        // res.Buffer.ToArray().DumpHex(Console.Out.WriteLine);
+        var tServer = Task.Run(async () =>
+        {
+            var client = listener.AcceptSRTClient();
+            var res = await client.Pipe.Input.ReadAsync(ct);
+            res.Buffer.ToArray().DumpHex(Console.Out.WriteLine);
+        }, ct);
 
-        // var proc = Process.Start("/usr/bin/ffmpeg", "-i -re -t 5 -f lavfi -i testsrc2 -f ts srt://localhost:9999?mode=client");
-        await tAccept;
+        var proc = Process.Start("/usr/bin/ffmpeg", "-i -re -t 5 -f lavfi -i testsrc2 -f ts srt://localhost:9999?mode=client");
+        await tServer;
     }
 }
