@@ -2,16 +2,22 @@ extern crate srt_interop;
 
 use futures::future::FutureExt as _;
 use srt_interop::srt::*;
-use std::ffi::{c_char, c_int};
+use std::ffi::{c_char, c_int, CStr};
 use std::mem::size_of;
 
-async unsafe fn setup_async() {
-    let result = srt_startup();
-    assert_ne!(result, SRT_ERROR);
+unsafe fn lasterror() -> String {
+    return CStr::from_ptr(srt_getlasterror_str())
+        .to_str()
+        .unwrap()
+        .to_owned();
 }
+
+async unsafe fn setup_async() {
+    assert_ne!(SRT_ERROR, srt_startup(), "{}", lasterror());
+}
+
 async unsafe fn teardown_async() {
-    let result = srt_cleanup();
-    assert_ne!(result, SRT_ERROR);
+    assert_ne!(SRT_ERROR, srt_cleanup(), "{}", lasterror());
 }
 
 #[tokio::test]
@@ -19,7 +25,7 @@ async fn start_listen() {
     run_test_async((|| async {
         unsafe {
             let sock = srt_create_socket();
-            assert_ne!(sock, SRT_ERROR);
+            assert_ne!(SRT_ERROR, sock);
             let port = 9999u16;
             let sin = sockaddr {
                 sa_family: AF_INET as sa_family_t,
@@ -44,9 +50,19 @@ async fn start_listen() {
                 ],
             };
 
-            srt_listen(sock, 1);
-            srt_bind(sock, &sin, size_of::<sockaddr> as c_int);
-            srt_close(sock);
+            assert_ne!(
+                SRT_ERROR,
+                srt_bind(sock, &sin, size_of::<sockaddr> as c_int),
+                "Bind error: {}",
+                lasterror()
+            );
+            assert_ne!(
+                SRT_ERROR,
+                srt_listen(sock, 1),
+                "Listen error: {}",
+                lasterror()
+            );
+            assert_ne!(SRT_ERROR, srt_close(sock), "Close error: {}", lasterror());
         }
     })())
     .await;

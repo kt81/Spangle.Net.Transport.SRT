@@ -1,5 +1,6 @@
 use cmake::Config;
 use std::collections::HashSet;
+use std::env;
 
 #[derive(Debug)]
 struct IgnoreMacros(HashSet<String>);
@@ -15,6 +16,36 @@ impl bindgen::callbacks::ParseCallbacks for IgnoreMacros {
 }
 
 fn main() {
+    let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap();
+    let target_arch = env::var("CARGO_CFG_TARGET_ARCH").unwrap();
+    let arch = match target_arch.as_str() {
+        "x86_64" => "x64",
+        "aarch64" => "arm64",
+        _ => panic!("unsupported: {}", target_arch),
+    };
+
+    let triplet: String;
+    let stlib_ext: &str;
+    let cmake_cxx_flags: &str;
+    let libsrt_name: &str;
+
+    if target_os == "windows" {
+        triplet = format!("{}-windows-static-md", arch);
+        stlib_ext = ".lib";
+        cmake_cxx_flags = "/EHsc";
+    } else if target_os == "linux" {
+        triplet = format!("{}-linux", arch);
+        stlib_ext = ".a";
+        cmake_cxx_flags = "";
+        libsrt_name = "srt";
+    } else if target_os == "macos//-is-not-tested!!!!!!" {
+        triplet = format!("{}-osx", arch);
+        stlib_ext = ".a";
+        cmake_cxx_flags = "";
+    } else {
+        panic!("unsupported target os: {}", target_os)
+    }
+
     let ignored_macros = IgnoreMacros(
         vec![
             // "FP_INFINITE".into(),
@@ -28,19 +59,26 @@ fn main() {
         .collect(),
     );
 
-    let arch = "x64-windows-static-md";
-    // let arch = "x64-linux";
-
-    let vcpkg_root = std::env::current_dir().unwrap().join("vcpkg");
-    let toolchain_file = vcpkg_root.clone().join("scripts").join("buildsystems").join("vcpkg.cmake");
-    let openssl_root = vcpkg_root.clone().join("packages").join("openssl_".to_owned() + arch);
+    let vcpkg_root = env::current_dir().unwrap().join("vcpkg");
+    let toolchain_file = vcpkg_root
+        .clone()
+        .join("scripts")
+        .join("buildsystems")
+        .join("vcpkg.cmake");
+    let openssl_root = vcpkg_root
+        .clone()
+        .join("packages")
+        .join("openssl_".to_owned() + triplet.as_str());
     let include_dir = openssl_root.clone().join("include");
-    let crypto_lib = openssl_root.clone().join("lib").join("libcrypto.lib");
+    let crypto_lib = openssl_root
+        .clone()
+        .join("lib")
+        .join("libcrypto".to_owned() + stlib_ext);
 
     let dst = Config::new("srt")
         // .very_verbose(true)
         .define("CMAKE_TOOLCHAIN_FILE", toolchain_file)
-        .define("CMAKE_CXX_FLAGS", "/EHsc")
+        .define("CMAKE_CXX_FLAGS", cmake_cxx_flags)
         .define("ENABLE_STATIC", "ON")
         .define("ENABLE_STDCXX_SYNC", "ON")
         .define("OPENSSL_ROOT_DIR", openssl_root)
@@ -51,18 +89,22 @@ fn main() {
     let mut lib_path = dst.clone();
     lib_path.push("lib");
     println!("cargo:rustc-link-search=native={}", lib_path.display());
-    println!("cargo:rustc-link-search=native=vcpkg/installed/{}/lib", arch);
-    // println!("cargo:rustc-link-lib=dylib=stdc++");
-    println!("cargo:rustc-link-lib=static=srt_static");
-    // println!("cargo:rustc-link-lib=static=crypto");
-    println!("cargo:rustc-link-lib=static=libcrypto");
-    println!("cargo:rustc-link-lib=dylib=user32");
-    println!("cargo:rustc-link-lib=dylib=crypt32");
+    println!(
+        "cargo:rustc-link-search=native=vcpkg/installed/{}/lib",
+        triplet
+    );
+    if target_os == "windows" {
+        println!("cargo:rustc-link-lib=dylib=user32");
+        println!("cargo:rustc-link-lib=dylib=crypt32");
+        println!("cargo:rustc-link-lib=static=libcrypto");
+        println!("cargo:rustc-link-lib=static=srt_static");
+    } else {
+        println!("cargo:rustc-link-lib=dylib=stdc++");
+        println!("cargo:rustc-link-lib=static=crypto");
+        println!("cargo:rustc-link-lib=static=srt");
+    }
 
-    let header = dst.clone()
-        .join("include")
-        .join("srt")
-        .join("srt.h");
+    let header = dst.clone().join("include").join("srt").join("srt.h");
     bindgen::Builder::default()
         .header(header.to_string_lossy())
         .parse_callbacks(Box::new(ignored_macros))

@@ -5,42 +5,55 @@ pub const SRT_VERSION_MINOR: u32 = 5;
 pub const SRT_VERSION_PATCH: u32 = 1;
 pub const SRT_VERSION_STRING: &[u8; 6usize] = b"1.5.1\0";
 pub const AF_UNSPEC: u32 = 0;
+pub const AF_LOCAL: u32 = 1;
 pub const AF_UNIX: u32 = 1;
+pub const AF_FILE: u32 = 1;
 pub const AF_INET: u32 = 2;
-pub const AF_IMPLINK: u32 = 3;
-pub const AF_PUP: u32 = 4;
-pub const AF_CHAOS: u32 = 5;
-pub const AF_NS: u32 = 6;
-pub const AF_IPX: u32 = 6;
-pub const AF_ISO: u32 = 7;
-pub const AF_OSI: u32 = 7;
-pub const AF_ECMA: u32 = 8;
-pub const AF_DATAKIT: u32 = 9;
-pub const AF_CCITT: u32 = 10;
-pub const AF_SNA: u32 = 11;
+pub const AF_AX25: u32 = 3;
+pub const AF_IPX: u32 = 4;
+pub const AF_APPLETALK: u32 = 5;
+pub const AF_NETROM: u32 = 6;
+pub const AF_BRIDGE: u32 = 7;
+pub const AF_ATMPVC: u32 = 8;
+pub const AF_X25: u32 = 9;
+pub const AF_INET6: u32 = 10;
+pub const AF_ROSE: u32 = 11;
 pub const AF_DECnet: u32 = 12;
-pub const AF_DLI: u32 = 13;
-pub const AF_LAT: u32 = 14;
-pub const AF_HYLINK: u32 = 15;
-pub const AF_APPLETALK: u32 = 16;
-pub const AF_NETBIOS: u32 = 17;
-pub const AF_VOICEVIEW: u32 = 18;
-pub const AF_FIREFOX: u32 = 19;
-pub const AF_UNKNOWN1: u32 = 20;
-pub const AF_BAN: u32 = 21;
-pub const AF_ATM: u32 = 22;
-pub const AF_INET6: u32 = 23;
-pub const AF_CLUSTER: u32 = 24;
-pub const AF_12844: u32 = 25;
-pub const AF_IRDA: u32 = 26;
-pub const AF_NETDES: u32 = 28;
-pub const AF_TCNPROCESS: u32 = 29;
-pub const AF_TCNMESSAGE: u32 = 30;
-pub const AF_ICLFXBM: u32 = 31;
-pub const AF_BTH: u32 = 32;
-pub const AF_LINK: u32 = 33;
-pub const AF_HYPERV: u32 = 34;
-pub const AF_MAX: u32 = 35;
+pub const AF_NETBEUI: u32 = 13;
+pub const AF_SECURITY: u32 = 14;
+pub const AF_KEY: u32 = 15;
+pub const AF_NETLINK: u32 = 16;
+pub const AF_ROUTE: u32 = 16;
+pub const AF_PACKET: u32 = 17;
+pub const AF_ASH: u32 = 18;
+pub const AF_ECONET: u32 = 19;
+pub const AF_ATMSVC: u32 = 20;
+pub const AF_RDS: u32 = 21;
+pub const AF_SNA: u32 = 22;
+pub const AF_IRDA: u32 = 23;
+pub const AF_PPPOX: u32 = 24;
+pub const AF_WANPIPE: u32 = 25;
+pub const AF_LLC: u32 = 26;
+pub const AF_IB: u32 = 27;
+pub const AF_MPLS: u32 = 28;
+pub const AF_CAN: u32 = 29;
+pub const AF_TIPC: u32 = 30;
+pub const AF_BLUETOOTH: u32 = 31;
+pub const AF_IUCV: u32 = 32;
+pub const AF_RXRPC: u32 = 33;
+pub const AF_ISDN: u32 = 34;
+pub const AF_PHONET: u32 = 35;
+pub const AF_IEEE802154: u32 = 36;
+pub const AF_CAIF: u32 = 37;
+pub const AF_ALG: u32 = 38;
+pub const AF_NFC: u32 = 39;
+pub const AF_VSOCK: u32 = 40;
+pub const AF_KCM: u32 = 41;
+pub const AF_QIPCRTR: u32 = 42;
+pub const AF_SMC: u32 = 43;
+pub const AF_XDP: u32 = 44;
+pub const AF_MCTP: u32 = 45;
+pub const AF_MAX: u32 = 46;
 pub const SRT_LOG_LEVEL_MIN: u32 = 2;
 pub const SRT_LOG_LEVEL_MAX: u32 = 7;
 pub const SRT_LOGF_DISABLE_TIME: u32 = 1;
@@ -91,15 +104,12 @@ pub const SRT_SYNC_CLOCK_POSIX_GETTIMEOFDAY: u32 = 4;
 pub const SRT_SYNC_CLOCK_AMD64_RDTSC: u32 = 5;
 pub const SRT_SYNC_CLOCK_IA32_RDTSC: u32 = 6;
 pub const SRT_SYNC_CLOCK_IA64_ITC: u32 = 7;
-pub type USHORT = ::std::os::raw::c_ushort;
-pub type UINT_PTR = ::std::os::raw::c_ulonglong;
-pub type CHAR = ::std::os::raw::c_char;
-pub type ADDRESS_FAMILY = USHORT;
+pub type sa_family_t = ::std::os::raw::c_ushort;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct sockaddr {
-    pub sa_family: ADDRESS_FAMILY,
-    pub sa_data: [CHAR; 14usize],
+    pub sa_family: sa_family_t,
+    pub sa_data: [::std::os::raw::c_char; 14usize],
 }
 #[test]
 fn bindgen_test_layout_sockaddr() {
@@ -139,10 +149,9 @@ fn bindgen_test_layout_sockaddr() {
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct sockaddr_storage {
-    pub ss_family: ADDRESS_FAMILY,
-    pub __ss_pad1: [CHAR; 6usize],
-    pub __ss_align: ::std::os::raw::c_longlong,
-    pub __ss_pad2: [CHAR; 112usize],
+    pub ss_family: sa_family_t,
+    pub __ss_padding: [::std::os::raw::c_char; 118usize],
+    pub __ss_align: ::std::os::raw::c_ulong,
 }
 #[test]
 fn bindgen_test_layout_sockaddr_storage() {
@@ -169,18 +178,18 @@ fn bindgen_test_layout_sockaddr_storage() {
         )
     );
     assert_eq!(
-        unsafe { ::std::ptr::addr_of!((*ptr).__ss_pad1) as usize - ptr as usize },
+        unsafe { ::std::ptr::addr_of!((*ptr).__ss_padding) as usize - ptr as usize },
         2usize,
         concat!(
             "Offset of field: ",
             stringify!(sockaddr_storage),
             "::",
-            stringify!(__ss_pad1)
+            stringify!(__ss_padding)
         )
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).__ss_align) as usize - ptr as usize },
-        8usize,
+        120usize,
         concat!(
             "Offset of field: ",
             stringify!(sockaddr_storage),
@@ -188,18 +197,7 @@ fn bindgen_test_layout_sockaddr_storage() {
             stringify!(__ss_align)
         )
     );
-    assert_eq!(
-        unsafe { ::std::ptr::addr_of!((*ptr).__ss_pad2) as usize - ptr as usize },
-        16usize,
-        concat!(
-            "Offset of field: ",
-            stringify!(sockaddr_storage),
-            "::",
-            stringify!(__ss_pad2)
-        )
-    );
 }
-pub type SOCKET = UINT_PTR;
 pub type SRT_LOG_HANDLER_FN = ::std::option::Option<
     unsafe extern "C" fn(
         opaque: *mut ::std::os::raw::c_void,
@@ -211,7 +209,7 @@ pub type SRT_LOG_HANDLER_FN = ::std::option::Option<
     ),
 >;
 pub type SRTSOCKET = i32;
-pub type SYSSOCKET = SOCKET;
+pub type SYSSOCKET = ::std::os::raw::c_int;
 pub type UDPSOCKET = SYSSOCKET;
 pub const SRT_SOCKSTATUS_SRTS_INIT: SRT_SOCKSTATUS = 1;
 pub const SRT_SOCKSTATUS_SRTS_OPENED: SRT_SOCKSTATUS = 2;
@@ -222,7 +220,7 @@ pub const SRT_SOCKSTATUS_SRTS_BROKEN: SRT_SOCKSTATUS = 6;
 pub const SRT_SOCKSTATUS_SRTS_CLOSING: SRT_SOCKSTATUS = 7;
 pub const SRT_SOCKSTATUS_SRTS_CLOSED: SRT_SOCKSTATUS = 8;
 pub const SRT_SOCKSTATUS_SRTS_NONEXIST: SRT_SOCKSTATUS = 9;
-pub type SRT_SOCKSTATUS = ::std::os::raw::c_int;
+pub type SRT_SOCKSTATUS = ::std::os::raw::c_uint;
 pub const SRT_SOCKOPT_SRTO_MSS: SRT_SOCKOPT = 0;
 pub const SRT_SOCKOPT_SRTO_SNDSYN: SRT_SOCKOPT = 1;
 pub const SRT_SOCKOPT_SRTO_RCVSYN: SRT_SOCKOPT = 2;
@@ -283,13 +281,13 @@ pub const SRT_SOCKOPT_SRTO_GROUPTYPE: SRT_SOCKOPT = 59;
 pub const SRT_SOCKOPT_SRTO_PACKETFILTER: SRT_SOCKOPT = 60;
 pub const SRT_SOCKOPT_SRTO_RETRANSMITALGO: SRT_SOCKOPT = 61;
 pub const SRT_SOCKOPT_SRTO_E_SIZE: SRT_SOCKOPT = 62;
-pub type SRT_SOCKOPT = ::std::os::raw::c_int;
+pub type SRT_SOCKOPT = ::std::os::raw::c_uint;
 pub const SRT_SOCKOPT_DEPRECATED_SRTO_DEPRECATED_END: SRT_SOCKOPT_DEPRECATED = 0;
-pub type SRT_SOCKOPT_DEPRECATED = ::std::os::raw::c_int;
+pub type SRT_SOCKOPT_DEPRECATED = ::std::os::raw::c_uint;
 pub const SRT_TRANSTYPE_SRTT_LIVE: SRT_TRANSTYPE = 0;
 pub const SRT_TRANSTYPE_SRTT_FILE: SRT_TRANSTYPE = 1;
 pub const SRT_TRANSTYPE_SRTT_INVALID: SRT_TRANSTYPE = 2;
-pub type SRT_TRANSTYPE = ::std::os::raw::c_int;
+pub type SRT_TRANSTYPE = ::std::os::raw::c_uint;
 pub const SRT_LIVE_DEF_PLSIZE: ::std::os::raw::c_int = 1316;
 pub const SRT_LIVE_MAX_PLSIZE: ::std::os::raw::c_int = 1456;
 pub const SRT_LIVE_DEF_LATENCY_MS: ::std::os::raw::c_int = 120;
@@ -1275,13 +1273,13 @@ pub const SRT_REJECT_REASON_SRT_REJ_FILTER: SRT_REJECT_REASON = 14;
 pub const SRT_REJECT_REASON_SRT_REJ_GROUP: SRT_REJECT_REASON = 15;
 pub const SRT_REJECT_REASON_SRT_REJ_TIMEOUT: SRT_REJECT_REASON = 16;
 pub const SRT_REJECT_REASON_SRT_REJ_E_SIZE: SRT_REJECT_REASON = 17;
-pub type SRT_REJECT_REASON = ::std::os::raw::c_int;
+pub type SRT_REJECT_REASON = ::std::os::raw::c_uint;
 pub const SRT_KM_STATE_SRT_KM_S_UNSECURED: SRT_KM_STATE = 0;
 pub const SRT_KM_STATE_SRT_KM_S_SECURING: SRT_KM_STATE = 1;
 pub const SRT_KM_STATE_SRT_KM_S_SECURED: SRT_KM_STATE = 2;
 pub const SRT_KM_STATE_SRT_KM_S_NOSECRET: SRT_KM_STATE = 3;
 pub const SRT_KM_STATE_SRT_KM_S_BADSECRET: SRT_KM_STATE = 4;
-pub type SRT_KM_STATE = ::std::os::raw::c_int;
+pub type SRT_KM_STATE = ::std::os::raw::c_uint;
 pub const SRT_EPOLL_OPT_SRT_EPOLL_OPT_NONE: SRT_EPOLL_OPT = 0;
 #[doc = " Ready for 'recv' operation:\n\n - For stream mode it means that at least 1 byte is available.\n In this mode the buffer may extract only a part of the packet,\n leaving next data possible for extraction later.\n\n - For message mode it means that there is at least one packet\n available (this may change in future, as it is desired that\n one full message should only wake up, not single packet of a\n not yet extractable message).\n\n - For live mode it means that there's at least one packet\n ready to play.\n\n - For listener sockets, this means that there is a new connection\n waiting for pickup through the `srt_accept()` call, that is,\n the next call to `srt_accept()` will succeed without blocking\n (see an alias SRT_EPOLL_ACCEPT below)."]
 pub const SRT_EPOLL_OPT_SRT_EPOLL_IN: SRT_EPOLL_OPT = 1;
@@ -1296,14 +1294,14 @@ pub const SRT_EPOLL_OPT_SRT_EPOLL_ACCEPT: SRT_EPOLL_OPT = 1;
 #[doc = " The socket has encountered an error in the last operation\n and the next operation on that socket will end up with error.\n You can retry the operation, but getting the error from it\n is certain, so you may as well close the socket."]
 pub const SRT_EPOLL_OPT_SRT_EPOLL_UPDATE: SRT_EPOLL_OPT = 16;
 #[doc = " The socket has encountered an error in the last operation\n and the next operation on that socket will end up with error.\n You can retry the operation, but getting the error from it\n is certain, so you may as well close the socket."]
-pub const SRT_EPOLL_OPT_SRT_EPOLL_ET: SRT_EPOLL_OPT = -2147483648;
-pub type SRT_EPOLL_OPT = ::std::os::raw::c_int;
+pub const SRT_EPOLL_OPT_SRT_EPOLL_ET: SRT_EPOLL_OPT = 2147483648;
+pub type SRT_EPOLL_OPT = ::std::os::raw::c_uint;
 pub type SRT_EPOLL_T = i32;
 #[doc = " This allows the EID container to be empty when calling the waiting\n function with infinite time. This means an infinite hangup, although\n a socket can be added to this EID from a separate thread."]
 pub const SRT_EPOLL_FLAGS_SRT_EPOLL_ENABLE_EMPTY: SRT_EPOLL_FLAGS = 1;
 #[doc = " This makes the waiting function check if there is output container\n passed to it, and report an error if it isn't. By default it is allowed\n that the output container is 0 size or NULL and therefore the readiness\n state is reported only as a number of ready sockets from return value."]
 pub const SRT_EPOLL_FLAGS_SRT_EPOLL_ENABLE_OUTPUTCHECK: SRT_EPOLL_FLAGS = 2;
-pub type SRT_EPOLL_FLAGS = ::std::os::raw::c_int;
+pub type SRT_EPOLL_FLAGS = ::std::os::raw::c_uint;
 pub type SRT_TRACEBSTATS = CBytePerfMon;
 pub const SRT_INVALID_SOCK: SRTSOCKET = -1;
 pub const SRT_ERROR: ::std::os::raw::c_int = -1;
@@ -1858,13 +1856,13 @@ pub const SRT_GROUP_TYPE_SRT_GTYPE_UNDEFINED: SRT_GROUP_TYPE = 0;
 pub const SRT_GROUP_TYPE_SRT_GTYPE_BROADCAST: SRT_GROUP_TYPE = 1;
 pub const SRT_GROUP_TYPE_SRT_GTYPE_BACKUP: SRT_GROUP_TYPE = 2;
 pub const SRT_GROUP_TYPE_SRT_GTYPE_E_END: SRT_GROUP_TYPE = 3;
-pub type SRT_GROUP_TYPE = ::std::os::raw::c_int;
+pub type SRT_GROUP_TYPE = ::std::os::raw::c_uint;
 pub const SRT_GFLAG_SYNCONMSG: u32 = 1;
 pub const SRT_MemberStatus_SRT_GST_PENDING: SRT_MemberStatus = 0;
 pub const SRT_MemberStatus_SRT_GST_IDLE: SRT_MemberStatus = 1;
 pub const SRT_MemberStatus_SRT_GST_RUNNING: SRT_MemberStatus = 2;
 pub const SRT_MemberStatus_SRT_GST_BROKEN: SRT_MemberStatus = 3;
-pub type SRT_MemberStatus = ::std::os::raw::c_int;
+pub type SRT_MemberStatus = ::std::os::raw::c_uint;
 pub use self::SRT_MemberStatus as SRT_MEMBERSTATUS;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
