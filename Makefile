@@ -24,6 +24,7 @@ else
 	else ifneq ($(filter arm%,$(UNAME_P)),)
 		ARCH := arm64
 	endif
+	TRIPLET := $(ARCH)-$(NIX_NAME)
 endif
 
 #   _____                    _
@@ -33,13 +34,13 @@ endif
 #    |_|\__,_|_|  \__, |\___|\__|___/
 #                 |___/
 
-.PHONY: init vcpkg srt
+.PHONY: init openssl
 
-interop/target/debug/srt_interop$(STLIB_EXT): vcpkg srt
+interop/target/debug/srt_interop$(STLIB_EXT): vcpkg
 	cargo build
 
-vcpkg: interop/vcpkg
-	interop/vcpkg/vcpkg intstall
+openssl: interop/vcpkg
+	interop/vcpkg/vcpkg install openssl:$(TRIPLET)
 
 init:
 	git submodule update --init

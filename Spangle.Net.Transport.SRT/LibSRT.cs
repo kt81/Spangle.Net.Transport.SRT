@@ -2,6 +2,7 @@
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Net;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using Spangle.Net.Transport.SRT;
 
@@ -16,11 +17,22 @@ internal static unsafe partial class LibSRT
 
     public const int AF_INET = 2;
 
+    /// <summary>
+    /// Returns last srt error as C# string.
+    /// </summary>
+    /// <remarks>
+    /// Call this method immediately on the same thread where the error occurred.
+    /// Otherwise, you will not get the expected value.
+    /// See <a href="https://github.com/Haivision/srt/blob/master/docs/API/API-functions.md#diagnostics-1">the official srt document</a>.
+    /// </remarks>
+    /// <returns></returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static string GetLastErrorStr()
     {
         return new string((sbyte*)srt_getlasterror_str());
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     [DoesNotReturn]
     public static void ThrowWithErrorStr()
     {
@@ -77,93 +89,94 @@ internal static unsafe partial class LibSRT
         }
     }
 
-    public static class SRT_SOCKSTATUS
+    public enum SRT_SOCKSTATUS
     {
-        public const int SRTS_INIT       = 1;
-        public const int SRTS_OPENED     = 2;
-        public const int SRTS_LISTENING  = 3;
-        public const int SRTS_CONNECTING = 4;
-        public const int SRTS_CONNECTED  = 5;
-        public const int SRTS_BROKEN     = 6;
-        public const int SRTS_CLOSING    = 7;
-        public const int SRTS_CLOSED     = 8;
-        public const int SRTS_NONEXIST   = 9;
+        SRTS_INIT       = 1,
+        SRTS_OPENED     = 2,
+        SRTS_LISTENING  = 3,
+        SRTS_CONNECTING = 4,
+        SRTS_CONNECTED  = 5,
+        SRTS_BROKEN     = 6,
+        SRTS_CLOSING    = 7,
+        SRTS_CLOSED     = 8,
+        SRTS_NONEXIST   = 9,
     }
 
-    public static class SRT_SOCKOPT
+    public enum SRT_SOCKOPT
     {
-        public const int SRTO_MSS                 = 0;
-        public const int SRTO_SNDSYN              = 1;
-        public const int SRTO_RCVSYN              = 2;
-        public const int SRTO_ISN                 = 3;
-        public const int SRTO_FC                  = 4;
-        public const int SRTO_SNDBUF              = 5;
-        public const int SRTO_RCVBUF              = 6;
-        public const int SRTO_LINGER              = 7;
-        public const int SRTO_UDP_SNDBUF          = 8;
-        public const int SRTO_UDP_RCVBUF          = 9;
-        public const int SRTO_RENDEZVOUS          = 12;
-        public const int SRTO_SNDTIMEO            = 13;
-        public const int SRTO_RCVTIMEO            = 14;
-        public const int SRTO_REUSEADDR           = 15;
-        public const int SRTO_MAXBW               = 16;
-        public const int SRTO_STATE               = 17;
-        public const int SRTO_EVENT               = 18;
-        public const int SRTO_SNDDATA             = 19;
-        public const int SRTO_RCVDATA             = 20;
-        public const int SRTO_SENDER              = 21;
-        public const int SRTO_TSBPDMODE           = 22;
-        public const int SRTO_LATENCY             = 23;
-        public const int SRTO_INPUTBW             = 24;
-        public const int SRTO_OHEADBW             = 25;
-        public const int SRTO_PASSPHRASE          = 26;
-        public const int SRTO_PBKEYLEN            = 27;
-        public const int SRTO_KMSTATE             = 28;
-        public const int SRTO_IPTTL               = 29;
-        public const int SRTO_IPTOS               = 30;
-        public const int SRTO_TLPKTDROP           = 31;
-        public const int SRTO_SNDDROPDELAY        = 32;
-        public const int SRTO_NAKREPORT           = 33;
-        public const int SRTO_VERSION             = 34;
-        public const int SRTO_PEERVERSION         = 35;
-        public const int SRTO_CONNTIMEO           = 36;
-        public const int SRTO_DRIFTTRACER         = 37;
-        public const int SRTO_MININPUTBW          = 38;
-        public const int SRTO_SNDKMSTATE          = 40;
-        public const int SRTO_RCVKMSTATE          = 41;
-        public const int SRTO_LOSSMAXTTL          = 42;
-        public const int SRTO_RCVLATENCY          = 43;
-        public const int SRTO_PEERLATENCY         = 44;
-        public const int SRTO_MINVERSION          = 45;
-        public const int SRTO_STREAMID            = 46;
-        public const int SRTO_CONGESTION          = 47;
-        public const int SRTO_MESSAGEAPI          = 48;
-        public const int SRTO_PAYLOADSIZE         = 49;
-        public const int SRTO_TRANSTYPE           = 50;
-        public const int SRTO_KMREFRESHRATE       = 51;
-        public const int SRTO_KMPREANNOUNCE       = 52;
-        public const int SRTO_ENFORCEDENCRYPTION  = 53;
-        public const int SRTO_IPV6ONLY            = 54;
-        public const int SRTO_PEERIDLETIMEO       = 55;
-        public const int SRTO_BINDTODEVICE        = 56;
-        public const int SRTO_GROUPCONNECT        = 57;
-        public const int SRTO_GROUPMINSTABLETIMEO = 58;
-        public const int SRTO_GROUPTYPE           = 59;
-        public const int SRTO_PACKETFILTER        = 60;
-        public const int SRTO_RETRANSMITALGO      = 61;
-        public const int SRTO_E_SIZE              = 62;
+        SRTO_MSS                 = 0,
+        SRTO_SNDSYN              = 1,
+        SRTO_RCVSYN              = 2,
+        SRTO_ISN                 = 3,
+        SRTO_FC                  = 4,
+        SRTO_SNDBUF              = 5,
+        SRTO_RCVBUF              = 6,
+        SRTO_LINGER              = 7,
+        SRTO_UDP_SNDBUF          = 8,
+        SRTO_UDP_RCVBUF          = 9,
+        SRTO_RENDEZVOUS          = 12,
+        SRTO_SNDTIMEO            = 13,
+        SRTO_RCVTIMEO            = 14,
+        SRTO_REUSEADDR           = 15,
+        SRTO_MAXBW               = 16,
+        SRTO_STATE               = 17,
+        SRTO_EVENT               = 18,
+        SRTO_SNDDATA             = 19,
+        SRTO_RCVDATA             = 20,
+        SRTO_SENDER              = 21,
+        SRTO_TSBPDMODE           = 22,
+        SRTO_LATENCY             = 23,
+        SRTO_INPUTBW             = 24,
+        SRTO_OHEADBW             = 25,
+        SRTO_PASSPHRASE          = 26,
+        SRTO_PBKEYLEN            = 27,
+        SRTO_KMSTATE             = 28,
+        SRTO_IPTTL               = 29,
+        SRTO_IPTOS               = 30,
+        SRTO_TLPKTDROP           = 31,
+        SRTO_SNDDROPDELAY        = 32,
+        SRTO_NAKREPORT           = 33,
+        SRTO_VERSION             = 34,
+        SRTO_PEERVERSION         = 35,
+        SRTO_CONNTIMEO           = 36,
+        SRTO_DRIFTTRACER         = 37,
+        SRTO_MININPUTBW          = 38,
+        SRTO_SNDKMSTATE          = 40,
+        SRTO_RCVKMSTATE          = 41,
+        SRTO_LOSSMAXTTL          = 42,
+        SRTO_RCVLATENCY          = 43,
+        SRTO_PEERLATENCY         = 44,
+        SRTO_MINVERSION          = 45,
+        SRTO_STREAMID            = 46,
+        SRTO_CONGESTION          = 47,
+        SRTO_MESSAGEAPI          = 48,
+        SRTO_PAYLOADSIZE         = 49,
+        SRTO_TRANSTYPE           = 50,
+        SRTO_KMREFRESHRATE       = 51,
+        SRTO_KMPREANNOUNCE       = 52,
+        SRTO_ENFORCEDENCRYPTION  = 53,
+        SRTO_IPV6ONLY            = 54,
+        SRTO_PEERIDLETIMEO       = 55,
+        SRTO_BINDTODEVICE        = 56,
+        SRTO_GROUPCONNECT        = 57,
+        SRTO_GROUPMINSTABLETIMEO = 58,
+        SRTO_GROUPTYPE           = 59,
+        SRTO_PACKETFILTER        = 60,
+        SRTO_RETRANSMITALGO      = 61,
+        SRTO_E_SIZE              = 62,
     }
 
     // same values with `<sys/epoll.h>`.
-    public static class SRT_EPOLL_OPT
+    [Flags]
+    public enum SRT_EPOLL_OPT
     {
-        public const int SRT_EPOLL_OPT_NONE = 0;
-        public const int SRT_EPOLL_IN       = 1;
-        public const int SRT_EPOLL_OUT      = 4;
-        public const int SRT_EPOLL_ERR      = 8;
-        public const int SRT_EPOLL_CONNECT  = 4;
-        public const int SRT_EPOLL_ACCEPT   = 1;
-        public const int SRT_EPOLL_UPDATE   = 16;
-        public const int SRT_EPOLL_ET       = -2147483648;
+        SRT_EPOLL_OPT_NONE = 0,
+        SRT_EPOLL_IN       = 1,
+        SRT_EPOLL_OUT      = 4,
+        SRT_EPOLL_ERR      = 8,
+        SRT_EPOLL_CONNECT  = 4,
+        SRT_EPOLL_ACCEPT   = 1,
+        SRT_EPOLL_UPDATE   = 16,
+        SRT_EPOLL_ET       = -2147483648,
     }
 }

@@ -2,6 +2,7 @@
 using System.Diagnostics.CodeAnalysis;
 using System.IO.Pipelines;
 using System.Runtime.InteropServices;
+using AsyncAwaitBestPractices;
 using static Spangle.Interop.Native.LibSRT;
 
 namespace Spangle.Net.Transport.SRT;
@@ -14,7 +15,7 @@ internal sealed class SRTPipe : IDuplexPipe, IDisposable
     private readonly Pipe _receivePipe;
     private readonly Pipe _sendPipe;
 
-    private readonly SRTSOCKET    _peerHandle;
+    private readonly SRTSOCKET _peerHandle;
 
     private readonly IntPtr _pReadBuffer;
     private readonly IntPtr _pWriteBuffer;
@@ -39,12 +40,7 @@ internal sealed class SRTPipe : IDuplexPipe, IDisposable
         _receivePipe = new Pipe(receivePipeOptions);
         _sendPipe = new Pipe(sendPipeOptions);
 
-        // ReSharper disable AsyncVoidLambda
-        receivePipeOptions.ReaderScheduler.Schedule(
-            async obj => await (obj as SRTPipe)!.ReadFromSRT().ConfigureAwait(false), this);
-        sendPipeOptions.WriterScheduler.Schedule(
-            async obj => await (obj as SRTPipe)!.WriteToSRT().ConfigureAwait(false), this);
-        // ReSharper restore AsyncVoidLambda
+        sendPipeOptions.WriterScheduler.Schedule(SendRelay, this);
     }
 
     public void Reset()
@@ -53,69 +49,81 @@ internal sealed class SRTPipe : IDuplexPipe, IDisposable
         _sendPipe.Reset();
     }
 
-    private async ValueTask ReadFromSRT()
+    internal unsafe void ReadFromSRT()
     {
         var writer = _receivePipe.Writer;
-        while (!_disposed)
+        if (_disposed)
         {
-            int size;
-            unsafe
+            return;
+        }
+
+        int size = srt_recvmsg(_peerHandle, (byte*)_pReadBuffer.ToPointer(), BufferSize);
+
+        if (size == SRT_ERROR)
+        {
+            writer.CompleteAsync(new SRTException(GetLastErrorStr())).SafeFireAndForget();
+            return;
+        }
+
+        fixed (void* p = writer.GetSpan(size))
+        {
+            Buffer.MemoryCopy(_pReadBuffer.ToPointer(), p, size, size);
+        }
+
+        writer.Advance(size);
+        WrapAsync(writer.FlushAsync(_cancellationToken)).SafeFireAndForget();
+    }
+
+    private static async ValueTask WrapAsync<T>(ValueTask<T> task)
+    {
+        await task.ConfigureAwait(false);
+    }
+
+    private static async void SendRelay(object? s)
+    {
+        var self = (SRTPipe)s!;
+        if (self._disposed)
+        {
+            return;
+        }
+
+        while (true)
+        {
+            if (self._cancellationToken.IsCancellationRequested)
             {
-                size = srt_recvmsg(_peerHandle, (byte*)_pReadBuffer.ToPointer(), BufferSize);
+                break;
             }
 
-            if (size == SRT_ERROR)
-            {
-                await writer.CompleteAsync(new SRTException(GetLastErrorStr())).ConfigureAwait(false);
-                return;
-            }
-
-            unsafe
-            {
-                fixed (void* p = writer.GetSpan(size))
-                {
-                    Buffer.MemoryCopy(_pReadBuffer.ToPointer(), p, size, size);
-                }
-            }
-            writer.Advance(size);
-            var result = await writer.FlushAsync(_cancellationToken).ConfigureAwait(false);
-            if (result.IsCanceled || result.IsCompleted)
-            {
-                return;
-            }
+            await WriteToSRT(self).ConfigureAwait(false);
         }
     }
 
-    private async ValueTask WriteToSRT()
+    private static async ValueTask WriteToSRT(SRTPipe self)
     {
-        var reader = _sendPipe.Reader;
-        while (!_disposed)
+        var reader = self._sendPipe.Reader;
+        var readResult = await reader.ReadAsync(self._cancellationToken).ConfigureAwait(false);
+        if (readResult.IsCanceled || readResult.IsCompleted)
         {
-            var readResult = await reader.ReadAsync(_cancellationToken).ConfigureAwait(false);
-            if (readResult.IsCanceled || readResult.IsCompleted)
-            {
-                return;
-            }
+            return;
+        }
 
-            var buff = readResult.Buffer;
-            if (buff.Length > BufferSize)
-            {
-                buff = buff.Slice(buff.Start, BufferSize);
-            }
+        var buff = readResult.Buffer;
+        if (buff.Length > BufferSize)
+        {
+            buff = buff.Slice(buff.Start, BufferSize);
+        }
 
-            int writeResult;
-            unsafe
-            {
-                buff.CopyTo(new Span<byte>(_pWriteBuffer.ToPointer(), BufferSize));
-                reader.AdvanceTo(buff.End);
-                writeResult = srt_send(_peerHandle, (byte*)_pWriteBuffer.ToPointer(), (int)buff.Length);
-            }
+        int writeResult;
+        unsafe
+        {
+            buff.CopyTo(new Span<byte>(self._pWriteBuffer.ToPointer(), BufferSize));
+            reader.AdvanceTo(buff.End);
+            writeResult = srt_send(self._peerHandle, (byte*)self._pWriteBuffer.ToPointer(), (int)buff.Length);
+        }
 
-            if (writeResult == SRT_ERROR)
-            {
-                await reader.CompleteAsync(new SRTException(GetLastErrorStr())).ConfigureAwait(false);
-                return;
-            }
+        if (writeResult == SRT_ERROR)
+        {
+            await reader.CompleteAsync(new SRTException(GetLastErrorStr())).ConfigureAwait(false);
         }
     }
 
@@ -131,6 +139,7 @@ internal sealed class SRTPipe : IDuplexPipe, IDisposable
         {
             return;
         }
+
         ReleaseUnmanagedResources();
 
         _receivePipe.Reader.Complete();

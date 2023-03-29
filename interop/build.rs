@@ -27,7 +27,6 @@ fn main() {
     let triplet: String;
     let stlib_ext: &str;
     let cmake_cxx_flags: &str;
-    let libsrt_name: &str;
 
     if target_os == "windows" {
         triplet = format!("{}-windows-static-md", arch);
@@ -37,7 +36,6 @@ fn main() {
         triplet = format!("{}-linux", arch);
         stlib_ext = ".a";
         cmake_cxx_flags = "";
-        libsrt_name = "srt";
     } else if target_os == "macos//-is-not-tested!!!!!!" {
         triplet = format!("{}-osx", arch);
         stlib_ext = ".a";

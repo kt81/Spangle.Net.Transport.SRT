@@ -1,6 +1,7 @@
 ﻿using System.Diagnostics.CodeAnalysis;
 using System.IO.Pipelines;
 using System.Net;
+using Microsoft.Extensions.Logging;
 using static Spangle.Interop.Native.LibSRT;
 
 namespace Spangle.Net.Transport.SRT;
@@ -10,22 +11,29 @@ public class SRTClient : IDisposable
 {
     private bool _disposed;
 
-    private readonly SRTSOCKET _peerHandle;
-    private readonly SRTPipe   _pipe;
+    internal readonly SRTPipe InternalPipe;
+    private readonly  ILogger _logger;
+
     public EndPoint RemoteEndPoint { get; }
+    internal SRTSOCKET PeerHandle { get; }
 
-    public IDuplexPipe Pipe => _pipe;
+    public IDuplexPipe Pipe => InternalPipe;
 
-    internal SRTClient(SRTSOCKET peerHandle, EndPoint remoteEndPoint, CancellationToken cancellationToken)
+    internal SRTClient(SRTSOCKET peerHandle, EndPoint remoteEndPoint, ILogger logger)
     {
-        _pipe = new SRTPipe(peerHandle, cancellationToken);
-        _peerHandle = peerHandle;
+        InternalPipe = new SRTPipe(peerHandle);
+        PeerHandle = peerHandle;
+        _logger = logger;
         RemoteEndPoint = remoteEndPoint;
     }
 
     private void ReleaseUnmanagedResources()
     {
-        srt_close(_peerHandle);
+        int result = srt_close(PeerHandle);
+        if (result < 0)
+        {
+            _logger.LogWarning("Error on closing socket: {}", GetLastErrorStr());
+        }
     }
 
     protected virtual void Dispose(bool disposing)
@@ -38,7 +46,7 @@ public class SRTClient : IDisposable
         ReleaseUnmanagedResources();
         if (disposing)
         {
-            _pipe.Dispose();
+            InternalPipe.Dispose();
         }
 
         _disposed = true;

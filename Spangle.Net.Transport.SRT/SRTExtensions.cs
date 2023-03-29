@@ -1,7 +1,21 @@
-﻿namespace Spangle.Net.Transport.SRT;
+﻿using System.Runtime.CompilerServices;
+using Spangle.Interop.Native;
+
+namespace Spangle.Net.Transport.SRT;
 
 public static class SRTExtensions
 {
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static int ThrowIfError(this int handle)
+    {
+        if (handle < 0)
+        {
+            LibSRT.ThrowWithErrorStr();
+        }
+
+        return handle;
+    }
+
     internal static void DumpHex(this byte[] data, Action<string> output) => DumpHex(new ReadOnlySpan<byte>(data), output);
     internal static void DumpHex(this ReadOnlySpan<byte> data, Action<string> output)
     {
