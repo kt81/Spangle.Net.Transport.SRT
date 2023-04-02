@@ -2,7 +2,6 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
-using AsyncAwaitBestPractices;
 using Microsoft.Extensions.Logging;
 using static Spangle.Interop.Native.LibSRT;
 
@@ -62,7 +61,7 @@ internal sealed class SRTSessionEpollProxy : IDisposable
         {
             if (!_isActive)
             {
-                return Task.Run(BeginRead);
+                return Task.Run(BeginRead, _token);
             }
         }
 
@@ -85,20 +84,25 @@ internal sealed class SRTSessionEpollProxy : IDisposable
         _isActive = true;
 
         const int timeout = 100;
-        int size = _capacity * 2;
-        int* handles = stackalloc SRTSOCKET[size];
-        var zeroInt = 0;
-        var zeroUlong = 0UL;
+        int maxSize = _capacity * 2;
+        int* handles = stackalloc SRTSOCKET[maxSize];
+        SRTSOCKET phHandles = 0;
+        var sysPhHandles = 0UL;
+        var zeroLen = 0;
         while (true)
         {
-            if (_token.IsCancellationRequested)
+            if (_token.IsCancellationRequested) break;
+
+            if (_sessionHandles.IsEmpty)
             {
-                break;
+                Thread.Sleep(100);
+                continue;
             }
 
-            int numHandles = srt_epoll_wait(_sessionEpollId, handles, &size, &zeroInt, &zeroInt,
-                timeout, &zeroUlong, &zeroInt, &zeroUlong, &zeroInt);
-            Debug.Assert(numHandles <= size);
+            int size = maxSize;
+            int numHandles = srt_epoll_wait(_sessionEpollId, handles, &size, &phHandles, &zeroLen,
+                timeout, &sysPhHandles, &zeroLen, &sysPhHandles, &zeroLen);
+            Debug.Assert(numHandles <= maxSize);
             if (numHandles <= 0)
             {
                 continue;
@@ -113,23 +117,28 @@ internal sealed class SRTSessionEpollProxy : IDisposable
                     or SRT_SOCKSTATUS.SRTS_NONEXIST
                     or SRT_SOCKSTATUS.SRTS_CLOSED)
                 {
-                    srt_close(s);
-                    srt_epoll_remove_usock(_sessionEpollId, s);
-                    _sessionHandles[s].Dispose();
-                    ((IDictionary)_sessionHandles).Remove(s);
-                    _logger.LogDebug("Source disconnected: {}", status);
+                    if (_sessionHandles.TryGetValue(s, out var cl))
+                    {
+                        srt_close(s).LogIfError(_logger);
+                        srt_epoll_remove_usock(_sessionEpollId, s).LogIfError(_logger);
+                        cl.Dispose();
+                        ((IDictionary)_sessionHandles).Remove(s);
+                        _logger.LogDebug("Source disconnected: {}", status);
+                    }
+
                     continue;
                 }
 
                 _sessionHandles[s].InternalPipe.ReadFromSRT();
             }
         }
+
         Dispose();
     }
 
     private void ReleaseUnmanagedResources()
     {
-        srt_epoll_clear_usocks(_sessionEpollId);
+        srt_epoll_release(_sessionEpollId).LogIfError(_logger);
     }
 
     public void Dispose()

@@ -1,4 +1,5 @@
 ﻿using System.Runtime.CompilerServices;
+using Microsoft.Extensions.Logging;
 using Spangle.Interop.Native;
 
 namespace Spangle.Net.Transport.SRT;
@@ -14,6 +15,14 @@ public static class SRTExtensions
         }
 
         return handle;
+    }
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static void LogIfError(this int handle, ILogger logger)
+    {
+        if (handle < 0)
+        {
+            logger.LogError("{}", LibSRT.GetLastErrorStr());
+        }
     }
 
     internal static void DumpHex(this byte[] data, Action<string> output) => DumpHex(new ReadOnlySpan<byte>(data), output);

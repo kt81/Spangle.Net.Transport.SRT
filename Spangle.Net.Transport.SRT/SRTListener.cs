@@ -67,7 +67,7 @@ public sealed class SRTListener : IDisposable
         // if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
         // {
         //     var mss = 1052;
-        //     srt_setsockopt(_listenHandle, 0, SRT_SOCKOPT.SRTO_MSS, &mss, sizeof(int)).ThrowIfError();
+        //     srt_setsockopt(_listenHandle, 0, (int)SRT_SOCKOPT.SRTO_MSS, &mss, sizeof(int)).ThrowIfError();
         // }
 
         IntPtr pSockAddrIn = Marshal.AllocCoTaskMem(s_socketAddressSize);
@@ -100,8 +100,10 @@ public sealed class SRTListener : IDisposable
         {
             (int peerHandle, IPEndPoint ep) = await task.ConfigureAwait(false);
             var client =  new SRTClient(peerHandle, ep, _logger);
-            // TODO create new instance if fail
-            _sessionEpollProxy.TryAddToControl(client);
+            if (!_sessionEpollProxy.TryAddToControl(client))
+            {
+                // TODO create new instance if fail
+            }
             return client;
         }
     }
@@ -122,17 +124,19 @@ public sealed class SRTListener : IDisposable
         }
 
         // Do not change this over 1. Otherwise the return value must be AsyncEnumerable or possible to drop some connections.
-        var numClientPerAcceptIsOne = 1;
+        const int numClientPerAcceptIsOne = 1;
         int* acceptHandles = stackalloc SRTSOCKET[numClientPerAcceptIsOne];
-        var zeroInt = 0;
-        var zeroUlong = 0UL;
+        SRTSOCKET phHandles = 0;
+        var sysPhHandles = 0UL;
+        var zeroLen = 0;
 
         while (true)
         {
             ct.ThrowIfCancellationRequested();
+            int size = numClientPerAcceptIsOne;
 
-            int numHandles = srt_epoll_wait(_listenEpollId, acceptHandles, &numClientPerAcceptIsOne, &zeroInt, &zeroInt,
-                AcceptTimeout, &zeroUlong, &zeroInt, &zeroUlong, &zeroInt);
+            int numHandles = srt_epoll_wait(_listenEpollId, acceptHandles, &size, &phHandles, &zeroLen,
+                AcceptTimeout, &sysPhHandles, &zeroLen, &sysPhHandles, &zeroLen);
             Debug.Assert(numHandles <= numClientPerAcceptIsOne);
             if (numHandles < numClientPerAcceptIsOne)
             {
@@ -200,8 +204,8 @@ public sealed class SRTListener : IDisposable
 
         if (_listenHandle >= 0)
         {
-            srt_epoll_clear_usocks(_listenEpollId);
-            srt_close(_listenHandle);
+            srt_epoll_release(_listenEpollId).LogIfError(_logger);
+            srt_close(_listenHandle).LogIfError(_logger);
             // DO NOT do srt_cleanup() here
         }
 
