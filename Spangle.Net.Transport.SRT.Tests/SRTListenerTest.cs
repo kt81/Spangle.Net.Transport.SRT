@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Net;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Text;
 using AsyncAwaitBestPractices;
 using Microsoft.Extensions.Logging;
 using Spangle.Interop.Native;
@@ -10,7 +11,7 @@ using Xunit.Abstractions;
 
 namespace Spangle.Net.Transport.SRT.Tests;
 
-public class SRTListenerTest : IDisposable
+public sealed class SRTListenerTest : IDisposable
 {
     private static ITestOutputHelper? s_testOutputHelper;
     private readonly ILogger           _logger;
@@ -51,7 +52,6 @@ public class SRTListenerTest : IDisposable
             {
                 if (ct.IsCancellationRequested) break;
                 var client = await listener.AcceptSRTClientAsync(ct);
-                s_testOutputHelper!.WriteLine("Accept connection!! {0}", client.PeerHandle);
                 Task.Run(async () =>
                 {
                     while (true)
@@ -82,10 +82,10 @@ public class SRTListenerTest : IDisposable
             RedirectStandardOutput = true,
             RedirectStandardError = true,
         };
-        var procs = new List<Process?>();
+        var processes = new List<Process>();
         for (var i = 0; i < 10; i++)
         {
-            procs.Add(Process.Start(psInfo));
+            processes.Add(Process.Start(psInfo) ?? throw new Exception("Could not create ffmpeg process."));
             await Task.Delay(10, ct).ConfigureAwait(false);
         }
 
@@ -97,15 +97,9 @@ public class SRTListenerTest : IDisposable
         {
             cts.Cancel();
             cts.Dispose();
-            foreach (var proc in procs)
+            foreach (var proc in processes)
             {
-                if (proc is null)
-                {
-                    continue;
-                }
-                proc.StandardInput.WriteLine("\x3");
-                proc.StandardInput.Close();
-                s_testOutputHelper!.WriteLine("Proc {0} has exited? : {1}", proc.Id, proc.HasExited);
+                proc.Kill();
                 proc.Dispose();
             }
         }
@@ -118,9 +112,27 @@ public class SRTListenerTest : IDisposable
 
     private class XunitOutputLogger<T> : ILogger<T>
     {
+        // ReSharper disable once StaticMemberInGenericType
+        private static readonly string s_name;
+
+        static XunitOutputLogger()
+        {
+            s_name = typeof(T).Name;
+        }
+
         public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
         {
-            s_testOutputHelper!.WriteLine(formatter.Invoke(state, exception));
+            var sb = new StringBuilder();
+            sb.Append('[').Append(logLevel.ToString()).Append("] [")
+                .Append(s_name).Append("] ")
+                .Append(formatter(state, exception));
+
+            if (exception != null)
+            {
+                sb.Append('\n').Append(exception);
+            }
+
+            s_testOutputHelper!.WriteLine(sb.ToString());
         }
 
         public bool IsEnabled(LogLevel logLevel) => true;
@@ -130,6 +142,6 @@ public class SRTListenerTest : IDisposable
 
     public void Dispose()
     {
-        LibSRT.srt_cleanup();
+        LibSRT.srt_cleanup().LogIfError(_logger);
     }
 }

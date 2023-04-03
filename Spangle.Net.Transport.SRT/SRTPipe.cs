@@ -10,7 +10,7 @@ namespace Spangle.Net.Transport.SRT;
 [SuppressMessage("ReSharper", "BuiltInTypeReferenceStyle")]
 internal sealed class SRTPipe : IDuplexPipe, IDisposable
 {
-    private const int BufferSize = 4096;
+    private const int BufferSize = 9400;
 
     private readonly Pipe _receivePipe;
     private readonly Pipe _sendPipe;

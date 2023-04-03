@@ -22,11 +22,11 @@ public sealed class SRTListener : IDisposable
 
     private static readonly int s_socketAddressSize = Marshal.SizeOf<sockaddr>();
 
-    private readonly IPEndPoint      _serverSocketEP;
-    private readonly SRTSOCKET       _listenHandle;
-    private readonly SRTSOCKET       _listenEpollId;
+    private readonly IPEndPoint           _serverSocketEP;
+    private readonly SRTSOCKET            _listenHandle;
+    private readonly SRTSOCKET            _listenEpollId;
     private readonly SRTSessionEpollProxy _sessionEpollProxy;
-    private readonly ILogger         _logger;
+    private readonly ILogger              _logger;
 
     private bool _active;
     private bool _disposed;
@@ -70,17 +70,10 @@ public sealed class SRTListener : IDisposable
         //     srt_setsockopt(_listenHandle, 0, (int)SRT_SOCKOPT.SRTO_MSS, &mss, sizeof(int)).ThrowIfError();
         // }
 
-        IntPtr pSockAddrIn = Marshal.AllocCoTaskMem(s_socketAddressSize);
-        try
-        {
-            var sin = WriteSockaddrIn(_serverSocketEP, (byte*)pSockAddrIn.ToPointer(), s_socketAddressSize);
-            srt_bind(_listenHandle, sin, s_socketAddressSize).ThrowIfError();
-            srt_listen(_listenHandle, backlog).ThrowIfError();
-        }
-        finally
-        {
-            Marshal.FreeCoTaskMem(pSockAddrIn);
-        }
+        var sockAddrIn = new sockaddr_in();
+        var sin = WriteSockaddrIn(_serverSocketEP, &sockAddrIn, s_socketAddressSize);
+        srt_bind(_listenHandle, sin, s_socketAddressSize).ThrowIfError();
+        srt_listen(_listenHandle, backlog).ThrowIfError();
 
         _logger.LogInformation("{} started to listen on {}:{}", nameof(SRTListener), _serverSocketEP.Address.ToString(),
             _serverSocketEP.Port);
@@ -99,11 +92,12 @@ public sealed class SRTListener : IDisposable
         async ValueTask<SRTClient> WaitAndWrap(ValueTask<(SRTSOCKET, IPEndPoint)> task)
         {
             (int peerHandle, IPEndPoint ep) = await task.ConfigureAwait(false);
-            var client =  new SRTClient(peerHandle, ep, _logger);
+            var client = new SRTClient(peerHandle, ep, _logger);
             if (!_sessionEpollProxy.TryAddToControl(client))
             {
                 // TODO create new instance if fail
             }
+
             return client;
         }
     }
@@ -125,27 +119,32 @@ public sealed class SRTListener : IDisposable
 
         // Do not change this over 1. Otherwise the return value must be AsyncEnumerable or possible to drop some connections.
         const int numClientPerAcceptIsOne = 1;
-        int* acceptHandles = stackalloc SRTSOCKET[numClientPerAcceptIsOne];
-        SRTSOCKET phHandles = 0;
-        var sysPhHandles = 0UL;
-        var zeroLen = 0;
-
+        SRT_EPOLL_EVENT_STR* eventHandles = stackalloc SRT_EPOLL_EVENT_STR[numClientPerAcceptIsOne];
         while (true)
         {
             ct.ThrowIfCancellationRequested();
-            int size = numClientPerAcceptIsOne;
 
-            int numHandles = srt_epoll_wait(_listenEpollId, acceptHandles, &size, &phHandles, &zeroLen,
-                AcceptTimeout, &sysPhHandles, &zeroLen, &sysPhHandles, &zeroLen);
+            int numHandles = srt_epoll_uwait(_listenEpollId, eventHandles, numClientPerAcceptIsOne, AcceptTimeout);
             Debug.Assert(numHandles <= numClientPerAcceptIsOne);
             if (numHandles < numClientPerAcceptIsOne)
             {
+                if (numHandles == -1)
+                {
+                    if (IsLastError(SRT_ERRNO.SRT_ETIMEOUT))
+                    {
+                        _logger.LogError("Error on accepting: {}", GetLastErrorStr());
+                    }
+                }
+
                 continue;
             }
 
-            SRTSOCKET s = acceptHandles[0];
+            var handle = eventHandles[0];
+            SRTSOCKET s = handle.fd;
+            var events = (SRT_EPOLL_OPT)handle.events;
+            _logger.LogDebug("Received events on listen (peer: {}): {}", s, events);
             SRT_SOCKSTATUS status = (SRT_SOCKSTATUS)srt_getsockstate(s);
-
+            _logger.LogDebug("Socket status ({}): {}", s, status);
             if (status is SRT_SOCKSTATUS.SRTS_BROKEN
                 or SRT_SOCKSTATUS.SRTS_NONEXIST
                 or SRT_SOCKSTATUS.SRTS_CLOSED)
@@ -156,43 +155,24 @@ public sealed class SRTListener : IDisposable
 
             Debug.Assert(status == SRT_SOCKSTATUS.SRTS_LISTENING);
 
-            IntPtr pPeerAddr = IntPtr.Zero;
-            IntPtr pPeerAddrSize = IntPtr.Zero;
-            try
+            var peerAddr = new sockaddr_in();
+            int peerAddrSize = s_socketAddressSize;
+            SRTSOCKET peerHandle = srt_accept(_listenHandle, (sockaddr*)&peerAddr, &peerAddrSize);
+            if (peerHandle == SRT_INVALID_SOCK)
             {
-                pPeerAddr = Marshal.AllocCoTaskMem(s_socketAddressSize);
-                pPeerAddrSize = Marshal.AllocCoTaskMem(Marshal.SizeOf<int>());
-                SRTSOCKET peerHandle = srt_accept(_listenHandle, (sockaddr*)pPeerAddr.ToPointer(),
-                    (int*)pPeerAddrSize.ToPointer());
-                if (peerHandle == SRT_INVALID_SOCK)
-                {
-                    ThrowWithErrorStr();
-                }
-
-                var ep = ConvertToEndPoint(pPeerAddr);
-
-                return ValueTask.FromResult((peerHandle, ep));
+                ThrowWithErrorStr();
             }
-            finally
-            {
-                if (pPeerAddr != IntPtr.Zero)
-                {
-                    Marshal.FreeCoTaskMem(pPeerAddr);
-                }
 
-                if (pPeerAddrSize != IntPtr.Zero)
-                {
-                    Marshal.FreeCoTaskMem(pPeerAddrSize);
-                }
-            }
+            var ep = ConvertToEndPoint(peerAddr);
+            _logger.LogDebug("Accepted peer handle: {} ({})", peerHandle, ep);
+
+            return ValueTask.FromResult((peerHandle, ep));
         }
     }
 
-    private static unsafe IPEndPoint ConvertToEndPoint(IntPtr pPeerAddr)
+    private static IPEndPoint ConvertToEndPoint(in sockaddr_in peerAddr)
     {
-        ref readonly sockaddr_in addr =
-            ref MemoryMarshal.AsRef<sockaddr_in>(new ReadOnlySpan<byte>(pPeerAddr.ToPointer(), s_socketAddressSize));
-        return new IPEndPoint(addr.Address, addr.Port);
+        return new IPEndPoint(peerAddr.Address, peerAddr.Port);
     }
 
     public void Dispose()

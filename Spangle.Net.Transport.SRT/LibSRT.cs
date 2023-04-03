@@ -33,13 +33,25 @@ internal static unsafe partial class LibSRT
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static SRT_ERRNO GetLastError()
+    {
+        return (SRT_ERRNO)srt_getlasterror(null);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static bool IsLastError(SRT_ERRNO errno)
+    {
+        return errno == GetLastError();
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     [DoesNotReturn]
     public static void ThrowWithErrorStr()
     {
-        throw new SRTException(GetLastErrorStr());
+        throw new SRTException(GetLastErrorStr() + " (" + GetLastError() + ")");
     }
 
-    public static sockaddr* WriteSockaddrIn(IPEndPoint ep, byte* writeBuffer, int length)
+    public static sockaddr* WriteSockaddrIn(IPEndPoint ep, sockaddr_in* writeBuffer, int length)
     {
         Debug.Assert(length == 16);
         var bufferSpan = new Span<byte>(writeBuffer, length);
@@ -178,5 +190,51 @@ internal static unsafe partial class LibSRT
         SRT_EPOLL_ACCEPT   = 1,
         SRT_EPOLL_UPDATE   = 16,
         SRT_EPOLL_ET       = -2147483648,
+    }
+
+    public enum SRT_ERRNO
+    {
+        SRT_EUNKNOWN        = -1,
+        SRT_SUCCESS         = 0,
+        SRT_ECONNSETUP      = 1000,
+        SRT_ENOSERVER       = 1001,
+        SRT_ECONNREJ        = 1002,
+        SRT_ESOCKFAIL       = 1003,
+        SRT_ESECFAIL        = 1004,
+        SRT_ESCLOSED        = 1005,
+        SRT_ECONNFAIL       = 2000,
+        SRT_ECONNLOST       = 2001,
+        SRT_ENOCONN         = 2002,
+        SRT_ERESOURCE       = 3000,
+        SRT_ETHREAD         = 3001,
+        SRT_ENOBUF          = 3002,
+        SRT_ESYSOBJ         = 3003,
+        SRT_EFILE           = 4000,
+        SRT_EINVRDOFF       = 4001,
+        SRT_ERDPERM         = 4002,
+        SRT_EINVWROFF       = 4003,
+        SRT_EWRPERM         = 4004,
+        SRT_EINVOP          = 5000,
+        SRT_EBOUNDSOCK      = 5001,
+        SRT_ECONNSOCK       = 5002,
+        SRT_EINVPARAM       = 5003,
+        SRT_EINVSOCK        = 5004,
+        SRT_EUNBOUNDSOCK    = 5005,
+        SRT_ENOLISTEN       = 5006,
+        SRT_ERDVNOSERV      = 5007,
+        SRT_ERDVUNBOUND     = 5008,
+        SRT_EINVALMSGAPI    = 5009,
+        SRT_EINVALBUFFERAPI = 5010,
+        SRT_EDUPLISTEN      = 5011,
+        SRT_ELARGEMSG       = 5012,
+        SRT_EINVPOLLID      = 5013,
+        SRT_EPOLLEMPTY      = 5014,
+        SRT_EBINDCONFLICT   = 5015,
+        SRT_EASYNCFAIL      = 6000,
+        SRT_EASYNCSND       = 6001,
+        SRT_EASYNCRCV       = 6002,
+        SRT_ETIMEOUT        = 6003,
+        SRT_ECONGEST        = 6004,
+        SRT_EPEERERR        = 7000,
     }
 }

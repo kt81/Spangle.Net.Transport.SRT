@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using Microsoft.Extensions.Logging;
+using Spangle.Interop.Native;
 using static Spangle.Interop.Native.LibSRT;
 
 namespace Spangle.Net.Transport.SRT;
@@ -85,10 +86,7 @@ internal sealed class SRTSessionEpollProxy : IDisposable
 
         const int timeout = 100;
         int maxSize = _capacity * 2;
-        int* handles = stackalloc SRTSOCKET[maxSize];
-        SRTSOCKET phHandles = 0;
-        var sysPhHandles = 0UL;
-        var zeroLen = 0;
+        var handles = stackalloc SRT_EPOLL_EVENT_STR[maxSize];
         while (true)
         {
             if (_token.IsCancellationRequested) break;
@@ -99,9 +97,7 @@ internal sealed class SRTSessionEpollProxy : IDisposable
                 continue;
             }
 
-            int size = maxSize;
-            int numHandles = srt_epoll_wait(_sessionEpollId, handles, &size, &phHandles, &zeroLen,
-                timeout, &sysPhHandles, &zeroLen, &sysPhHandles, &zeroLen);
+            int numHandles = srt_epoll_uwait(_sessionEpollId, handles, maxSize, timeout);
             Debug.Assert(numHandles <= maxSize);
             if (numHandles <= 0)
             {
@@ -110,7 +106,10 @@ internal sealed class SRTSessionEpollProxy : IDisposable
 
             for (var i = 0; i < numHandles; i++)
             {
-                SRTSOCKET s = handles[0];
+                ref SRT_EPOLL_EVENT_STR handle = ref handles[i];
+                SRTSOCKET s = handle.fd;
+                var events = (SRT_EPOLL_OPT)handle.events;
+                _logger.LogDebug("Incoming epoll event ({}): {}", s, events);
                 SRT_SOCKSTATUS status = (SRT_SOCKSTATUS)srt_getsockstate(s);
 
                 if (status is SRT_SOCKSTATUS.SRTS_BROKEN
