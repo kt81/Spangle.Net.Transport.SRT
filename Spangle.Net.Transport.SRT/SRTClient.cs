@@ -15,7 +15,8 @@ public class SRTClient : IDisposable
     private readonly  ILogger _logger;
 
     public EndPoint RemoteEndPoint { get; }
-    internal SRTSOCKET PeerHandle { get; }
+    public SRTSOCKET PeerHandle { get; }
+    public bool IsCompleted { get; private set; }
 
     public IDuplexPipe Pipe => InternalPipe;
 
@@ -27,13 +28,14 @@ public class SRTClient : IDisposable
         RemoteEndPoint = remoteEndPoint;
     }
 
+    internal void MarkCompleted()
+    {
+        IsCompleted = true;
+    }
+
     private void ReleaseUnmanagedResources()
     {
-        int result = srt_close(PeerHandle);
-        if (result < 0)
-        {
-            _logger.LogWarning("Error on closing socket: {}", GetLastErrorStr());
-        }
+        srt_close(PeerHandle).LogIfError(_logger);
     }
 
     protected virtual void Dispose(bool disposing)

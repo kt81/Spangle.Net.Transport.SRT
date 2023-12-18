@@ -39,32 +39,23 @@ public sealed class SRTListenerTest : IDisposable
     [Fact]
     public async Task TestListen()
     {
+        const int numConnections = 21;
+
         var ep = IPEndPoint.Parse("0.0.0.0:9999");
         var listener = new SRTListener(ep, _logger);
         listener.Start();
         var cts = new CancellationTokenSource();
-        cts.CancelAfter(60000);
+        cts.CancelAfter(10000);
         var ct = cts.Token;
 
         var tServer = Task.Run(async () =>
         {
-            for (var h = 0; h < 10; h++)
+            for (var h = 0; h < numConnections; h++)
             {
                 if (ct.IsCancellationRequested) break;
                 var client = await listener.AcceptSRTClientAsync(ct);
-                Task.Run(async () =>
-                {
-                    while (true)
-                    {
-                        if (ct.IsCancellationRequested) break;
-                        var res = await client.Pipe.Input.ReadAsync(ct).ConfigureAwait(false);
-                        Assert.NotEmpty(res.Buffer.ToArray()); // .DumpHex(s_testOutputHelper.WriteLine);
-                        client.Pipe.Input.AdvanceTo(res.Buffer.End);
-                    }
-                }, ct).SafeFireAndForget(e => Assert.Fail(e.Message));
+                ReceiveAny(client, ct).SafeFireAndForget(e => Assert.Fail(e.Message));
             }
-
-            await Task.Delay(100, ct);
         }, ct).ConfigureAwait(false);
 
         await Task.Delay(200, ct);
@@ -72,21 +63,21 @@ public sealed class SRTListenerTest : IDisposable
         ProcessStartInfo psInfo = new ProcessStartInfo
         {
             FileName = "ffmpeg",
-            Arguments = @"-f lavfi -re -i testsrc2=duration=3:rate=30 " +
-                        @"-f lavfi -re -i sine=frequency=1000:duration=3:sample_rate=44100 " +
-                        @"-pix_fmt yuv420p -c:v libx264 -b:v 1000k -g 30 -keyint_min 30 -profile:v baseline -preset veryfast " +
-                        @"-f mpegts srt://localhost:9999?pkt_size=940",
+            Arguments = "-f lavfi -re -i testsrc2=duration=3:rate=30 " +
+                        "-f lavfi -re -i sine=frequency=1000:duration=3:sample_rate=44100 " +
+                        "-pix_fmt yuv420p -c:v libx264 -b:v 1000k -g 30 -keyint_min 30 -profile:v baseline -preset veryfast " +
+                        "-f mpegts srt://localhost:9999",
             CreateNoWindow = true,
             UseShellExecute = false,
-            RedirectStandardInput = true,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
+            RedirectStandardInput = false,
+            RedirectStandardOutput = false,
+            RedirectStandardError = false,
         };
         var processes = new List<Process>();
-        for (var i = 0; i < 10; i++)
+        for (var i = 0; i < numConnections; i++)
         {
             processes.Add(Process.Start(psInfo) ?? throw new Exception("Could not create ffmpeg process."));
-            await Task.Delay(10, ct).ConfigureAwait(false);
+            await Task.Delay(10, ct);
         }
 
         try
@@ -95,7 +86,7 @@ public sealed class SRTListenerTest : IDisposable
         }
         finally
         {
-            cts.Cancel();
+            await cts.CancelAsync();
             cts.Dispose();
             foreach (var proc in processes)
             {
@@ -103,11 +94,15 @@ public sealed class SRTListenerTest : IDisposable
                 proc.Dispose();
             }
         }
-        // if (proc!.HasExited)
-        // {
-        //     s_testOutputHelper.WriteLine("STDOUT: {0}", await proc.StandardOutput.ReadToEndAsync(ct));
-        //     s_testOutputHelper.WriteLine("STDERR: {0}", await proc.StandardError.ReadToEndAsync(ct));
-        // }
+    }
+
+    private async Task ReceiveAny(SRTClient client, CancellationToken ct)
+    {
+        if (ct.IsCancellationRequested) return;
+        var res = await client.Pipe.Input.ReadAsync(ct).ConfigureAwait(false);
+        Assert.NotEmpty(res.Buffer.ToArray()); // .DumpHex(s_testOutputHelper.WriteLine);
+        client.Pipe.Input.AdvanceTo(res.Buffer.End);
+        // read only first buffer
     }
 
     private class XunitOutputLogger<T> : ILogger<T>
@@ -122,6 +117,10 @@ public sealed class SRTListenerTest : IDisposable
 
         public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
         {
+            if (!IsEnabled(logLevel))
+            {
+                return;
+            }
             var sb = new StringBuilder();
             sb.Append('[').Append(logLevel.ToString()).Append("] [")
                 .Append(s_name).Append("] ")
@@ -135,7 +134,7 @@ public sealed class SRTListenerTest : IDisposable
             s_testOutputHelper!.WriteLine(sb.ToString());
         }
 
-        public bool IsEnabled(LogLevel logLevel) => true;
+        public bool IsEnabled(LogLevel logLevel) => logLevel >= LogLevel.Information;
 
         public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
     }

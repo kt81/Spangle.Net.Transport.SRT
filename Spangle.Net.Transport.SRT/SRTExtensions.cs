@@ -17,11 +17,11 @@ public static class SRTExtensions
         return handle;
     }
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal static void LogIfError(this int handle, ILogger logger)
+    internal static void LogIfError(this int handle, ILogger logger, LogLevel logLevel = LogLevel.Warning)
     {
         if (handle < 0)
         {
-            logger.LogError("{}", LibSRT.GetLastErrorStr());
+            logger.Log(logLevel, "{}", LibSRT.GetLastErrorStr());
         }
     }
 

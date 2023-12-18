@@ -8,7 +8,7 @@ use super::srt::*;
 
 #[no_mangle]
 pub unsafe extern "C" fn csbindgen_srt_startup(
-    
+
 ) -> c_int
 {
     srt_startup(
@@ -18,7 +18,7 @@ pub unsafe extern "C" fn csbindgen_srt_startup(
 
 #[no_mangle]
 pub unsafe extern "C" fn csbindgen_srt_cleanup(
-    
+
 ) -> c_int
 {
     srt_cleanup(
@@ -30,7 +30,7 @@ pub unsafe extern "C" fn csbindgen_srt_cleanup(
 pub unsafe extern "C" fn csbindgen_srt_socket(
     arg1: c_int,
     arg2: c_int,
-    arg3: c_int    
+    arg3: c_int
 ) -> SRTSOCKET
 {
     srt_socket(
@@ -42,7 +42,7 @@ pub unsafe extern "C" fn csbindgen_srt_socket(
 
 #[no_mangle]
 pub unsafe extern "C" fn csbindgen_srt_create_socket(
-    
+
 ) -> SRTSOCKET
 {
     srt_create_socket(
@@ -54,7 +54,7 @@ pub unsafe extern "C" fn csbindgen_srt_create_socket(
 pub unsafe extern "C" fn csbindgen_srt_bind(
     u: SRTSOCKET,
     name: *const sockaddr,
-    namelen: c_int    
+    namelen: c_int
 ) -> c_int
 {
     srt_bind(
@@ -67,7 +67,7 @@ pub unsafe extern "C" fn csbindgen_srt_bind(
 #[no_mangle]
 pub unsafe extern "C" fn csbindgen_srt_bind_acquire(
     u: SRTSOCKET,
-    sys_udp_sock: UDPSOCKET    
+    sys_udp_sock: UDPSOCKET
 ) -> c_int
 {
     srt_bind_acquire(
@@ -79,7 +79,7 @@ pub unsafe extern "C" fn csbindgen_srt_bind_acquire(
 #[no_mangle]
 pub unsafe extern "C" fn csbindgen_srt_listen(
     u: SRTSOCKET,
-    backlog: c_int    
+    backlog: c_int
 ) -> c_int
 {
     srt_listen(
@@ -92,7 +92,7 @@ pub unsafe extern "C" fn csbindgen_srt_listen(
 pub unsafe extern "C" fn csbindgen_srt_accept(
     u: SRTSOCKET,
     addr: *mut sockaddr,
-    addrlen: *mut c_int    
+    addrlen: *mut c_int
 ) -> SRTSOCKET
 {
     srt_accept(
@@ -106,7 +106,7 @@ pub unsafe extern "C" fn csbindgen_srt_accept(
 pub unsafe extern "C" fn csbindgen_srt_accept_bond(
     listeners: *const SRTSOCKET,
     lsize: c_int,
-    msTimeOut: i64    
+    msTimeOut: i64
 ) -> SRTSOCKET
 {
     srt_accept_bond(
@@ -120,7 +120,7 @@ pub unsafe extern "C" fn csbindgen_srt_accept_bond(
 pub unsafe extern "C" fn csbindgen_srt_listen_callback(
     lsn: SRTSOCKET,
     hook_fn: srt_listen_callback_fn,
-    hook_opaque: *mut c_void    
+    hook_opaque: *mut c_void
 ) -> c_int
 {
     srt_listen_callback(
@@ -134,7 +134,7 @@ pub unsafe extern "C" fn csbindgen_srt_listen_callback(
 pub unsafe extern "C" fn csbindgen_srt_connect_callback(
     clr: SRTSOCKET,
     hook_fn: srt_connect_callback_fn,
-    hook_opaque: *mut c_void    
+    hook_opaque: *mut c_void
 ) -> c_int
 {
     srt_connect_callback(
@@ -148,7 +148,7 @@ pub unsafe extern "C" fn csbindgen_srt_connect_callback(
 pub unsafe extern "C" fn csbindgen_srt_connect(
     u: SRTSOCKET,
     name: *const sockaddr,
-    namelen: c_int    
+    namelen: c_int
 ) -> c_int
 {
     srt_connect(
@@ -163,7 +163,7 @@ pub unsafe extern "C" fn csbindgen_srt_connect_debug(
     u: SRTSOCKET,
     name: *const sockaddr,
     namelen: c_int,
-    forced_isn: c_int    
+    forced_isn: c_int
 ) -> c_int
 {
     srt_connect_debug(
@@ -179,7 +179,7 @@ pub unsafe extern "C" fn csbindgen_srt_connect_bind(
     u: SRTSOCKET,
     source: *const sockaddr,
     target: *const sockaddr,
-    len: c_int    
+    len: c_int
 ) -> c_int
 {
     srt_connect_bind(
@@ -196,7 +196,7 @@ pub unsafe extern "C" fn csbindgen_srt_rendezvous(
     local_name: *const sockaddr,
     local_namelen: c_int,
     remote_name: *const sockaddr,
-    remote_namelen: c_int    
+    remote_namelen: c_int
 ) -> c_int
 {
     srt_rendezvous(
@@ -210,7 +210,7 @@ pub unsafe extern "C" fn csbindgen_srt_rendezvous(
 
 #[no_mangle]
 pub unsafe extern "C" fn csbindgen_srt_close(
-    u: SRTSOCKET    
+    u: SRTSOCKET
 ) -> c_int
 {
     srt_close(
@@ -222,7 +222,7 @@ pub unsafe extern "C" fn csbindgen_srt_close(
 pub unsafe extern "C" fn csbindgen_srt_getpeername(
     u: SRTSOCKET,
     name: *mut sockaddr,
-    namelen: *mut c_int    
+    namelen: *mut c_int
 ) -> c_int
 {
     srt_getpeername(
@@ -236,7 +236,7 @@ pub unsafe extern "C" fn csbindgen_srt_getpeername(
 pub unsafe extern "C" fn csbindgen_srt_getsockname(
     u: SRTSOCKET,
     name: *mut sockaddr,
-    namelen: *mut c_int    
+    namelen: *mut c_int
 ) -> c_int
 {
     srt_getsockname(
@@ -252,7 +252,7 @@ pub unsafe extern "C" fn csbindgen_srt_getsockopt(
     level: c_int,
     optname: SRT_SOCKOPT,
     optval: *mut c_void,
-    optlen: *mut c_int    
+    optlen: *mut c_int
 ) -> c_int
 {
     srt_getsockopt(
@@ -270,7 +270,7 @@ pub unsafe extern "C" fn csbindgen_srt_setsockopt(
     level: c_int,
     optname: SRT_SOCKOPT,
     optval: *const c_void,
-    optlen: c_int    
+    optlen: c_int
 ) -> c_int
 {
     srt_setsockopt(
@@ -287,7 +287,7 @@ pub unsafe extern "C" fn csbindgen_srt_getsockflag(
     u: SRTSOCKET,
     opt: SRT_SOCKOPT,
     optval: *mut c_void,
-    optlen: *mut c_int    
+    optlen: *mut c_int
 ) -> c_int
 {
     srt_getsockflag(
@@ -303,7 +303,7 @@ pub unsafe extern "C" fn csbindgen_srt_setsockflag(
     u: SRTSOCKET,
     opt: SRT_SOCKOPT,
     optval: *const c_void,
-    optlen: c_int    
+    optlen: c_int
 ) -> c_int
 {
     srt_setsockflag(
@@ -316,7 +316,7 @@ pub unsafe extern "C" fn csbindgen_srt_setsockflag(
 
 #[no_mangle]
 pub unsafe extern "C" fn csbindgen_srt_msgctrl_init(
-    mctrl: *mut SRT_MSGCTRL    
+    mctrl: *mut SRT_MSGCTRL
 )
 {
     srt_msgctrl_init(
@@ -328,7 +328,7 @@ pub unsafe extern "C" fn csbindgen_srt_msgctrl_init(
 pub unsafe extern "C" fn csbindgen_srt_send(
     u: SRTSOCKET,
     buf: *const c_char,
-    len: c_int    
+    len: c_int
 ) -> c_int
 {
     srt_send(
@@ -344,7 +344,7 @@ pub unsafe extern "C" fn csbindgen_srt_sendmsg(
     buf: *const c_char,
     len: c_int,
     ttl: c_int,
-    inorder: c_int    
+    inorder: c_int
 ) -> c_int
 {
     srt_sendmsg(
@@ -361,7 +361,7 @@ pub unsafe extern "C" fn csbindgen_srt_sendmsg2(
     u: SRTSOCKET,
     buf: *const c_char,
     len: c_int,
-    mctrl: *mut SRT_MSGCTRL    
+    mctrl: *mut SRT_MSGCTRL
 ) -> c_int
 {
     srt_sendmsg2(
@@ -376,7 +376,7 @@ pub unsafe extern "C" fn csbindgen_srt_sendmsg2(
 pub unsafe extern "C" fn csbindgen_srt_recv(
     u: SRTSOCKET,
     buf: *mut c_char,
-    len: c_int    
+    len: c_int
 ) -> c_int
 {
     srt_recv(
@@ -390,7 +390,7 @@ pub unsafe extern "C" fn csbindgen_srt_recv(
 pub unsafe extern "C" fn csbindgen_srt_recvmsg(
     u: SRTSOCKET,
     buf: *mut c_char,
-    len: c_int    
+    len: c_int
 ) -> c_int
 {
     srt_recvmsg(
@@ -405,7 +405,7 @@ pub unsafe extern "C" fn csbindgen_srt_recvmsg2(
     u: SRTSOCKET,
     buf: *mut c_char,
     len: c_int,
-    mctrl: *mut SRT_MSGCTRL    
+    mctrl: *mut SRT_MSGCTRL
 ) -> c_int
 {
     srt_recvmsg2(
@@ -422,7 +422,7 @@ pub unsafe extern "C" fn csbindgen_srt_sendfile(
     path: *const c_char,
     offset: *mut i64,
     size: i64,
-    block: c_int    
+    block: c_int
 ) -> i64
 {
     srt_sendfile(
@@ -440,7 +440,7 @@ pub unsafe extern "C" fn csbindgen_srt_recvfile(
     path: *const c_char,
     offset: *mut i64,
     size: i64,
-    block: c_int    
+    block: c_int
 ) -> i64
 {
     srt_recvfile(
@@ -454,7 +454,7 @@ pub unsafe extern "C" fn csbindgen_srt_recvfile(
 
 #[no_mangle]
 pub unsafe extern "C" fn csbindgen_srt_getlasterror_str(
-    
+
 ) -> *const c_char
 {
     srt_getlasterror_str(
@@ -464,7 +464,7 @@ pub unsafe extern "C" fn csbindgen_srt_getlasterror_str(
 
 #[no_mangle]
 pub unsafe extern "C" fn csbindgen_srt_getlasterror(
-    errno_loc: *mut c_int    
+    errno_loc: *mut c_int
 ) -> c_int
 {
     srt_getlasterror(
@@ -475,7 +475,7 @@ pub unsafe extern "C" fn csbindgen_srt_getlasterror(
 #[no_mangle]
 pub unsafe extern "C" fn csbindgen_srt_strerror(
     code: c_int,
-    errnoval: c_int    
+    errnoval: c_int
 ) -> *const c_char
 {
     srt_strerror(
@@ -486,7 +486,7 @@ pub unsafe extern "C" fn csbindgen_srt_strerror(
 
 #[no_mangle]
 pub unsafe extern "C" fn csbindgen_srt_clearlasterror(
-    
+
 )
 {
     srt_clearlasterror(
@@ -498,7 +498,7 @@ pub unsafe extern "C" fn csbindgen_srt_clearlasterror(
 pub unsafe extern "C" fn csbindgen_srt_bstats(
     u: SRTSOCKET,
     perf: *mut SRT_TRACEBSTATS,
-    clear: c_int    
+    clear: c_int
 ) -> c_int
 {
     srt_bstats(
@@ -513,7 +513,7 @@ pub unsafe extern "C" fn csbindgen_srt_bistats(
     u: SRTSOCKET,
     perf: *mut SRT_TRACEBSTATS,
     clear: c_int,
-    instantaneous: c_int    
+    instantaneous: c_int
 ) -> c_int
 {
     srt_bistats(
@@ -526,7 +526,7 @@ pub unsafe extern "C" fn csbindgen_srt_bistats(
 
 #[no_mangle]
 pub unsafe extern "C" fn csbindgen_srt_getsockstate(
-    u: SRTSOCKET    
+    u: SRTSOCKET
 ) -> SRT_SOCKSTATUS
 {
     srt_getsockstate(
@@ -536,7 +536,7 @@ pub unsafe extern "C" fn csbindgen_srt_getsockstate(
 
 #[no_mangle]
 pub unsafe extern "C" fn csbindgen_srt_epoll_create(
-    
+
 ) -> c_int
 {
     srt_epoll_create(
@@ -546,7 +546,7 @@ pub unsafe extern "C" fn csbindgen_srt_epoll_create(
 
 #[no_mangle]
 pub unsafe extern "C" fn csbindgen_srt_epoll_clear_usocks(
-    eid: c_int    
+    eid: c_int
 ) -> c_int
 {
     srt_epoll_clear_usocks(
@@ -558,7 +558,7 @@ pub unsafe extern "C" fn csbindgen_srt_epoll_clear_usocks(
 pub unsafe extern "C" fn csbindgen_srt_epoll_add_usock(
     eid: c_int,
     u: SRTSOCKET,
-    events: *const c_int    
+    events: *const c_int
 ) -> c_int
 {
     srt_epoll_add_usock(
@@ -572,7 +572,7 @@ pub unsafe extern "C" fn csbindgen_srt_epoll_add_usock(
 pub unsafe extern "C" fn csbindgen_srt_epoll_add_ssock(
     eid: c_int,
     s: SYSSOCKET,
-    events: *const c_int    
+    events: *const c_int
 ) -> c_int
 {
     srt_epoll_add_ssock(
@@ -585,7 +585,7 @@ pub unsafe extern "C" fn csbindgen_srt_epoll_add_ssock(
 #[no_mangle]
 pub unsafe extern "C" fn csbindgen_srt_epoll_remove_usock(
     eid: c_int,
-    u: SRTSOCKET    
+    u: SRTSOCKET
 ) -> c_int
 {
     srt_epoll_remove_usock(
@@ -597,7 +597,7 @@ pub unsafe extern "C" fn csbindgen_srt_epoll_remove_usock(
 #[no_mangle]
 pub unsafe extern "C" fn csbindgen_srt_epoll_remove_ssock(
     eid: c_int,
-    s: SYSSOCKET    
+    s: SYSSOCKET
 ) -> c_int
 {
     srt_epoll_remove_ssock(
@@ -610,7 +610,7 @@ pub unsafe extern "C" fn csbindgen_srt_epoll_remove_ssock(
 pub unsafe extern "C" fn csbindgen_srt_epoll_update_usock(
     eid: c_int,
     u: SRTSOCKET,
-    events: *const c_int    
+    events: *const c_int
 ) -> c_int
 {
     srt_epoll_update_usock(
@@ -624,7 +624,7 @@ pub unsafe extern "C" fn csbindgen_srt_epoll_update_usock(
 pub unsafe extern "C" fn csbindgen_srt_epoll_update_ssock(
     eid: c_int,
     s: SYSSOCKET,
-    events: *const c_int    
+    events: *const c_int
 ) -> c_int
 {
     srt_epoll_update_ssock(
@@ -645,7 +645,7 @@ pub unsafe extern "C" fn csbindgen_srt_epoll_wait(
     lrfds: *mut SYSSOCKET,
     lrnum: *mut c_int,
     lwfds: *mut SYSSOCKET,
-    lwnum: *mut c_int    
+    lwnum: *mut c_int
 ) -> c_int
 {
     srt_epoll_wait(
@@ -667,7 +667,7 @@ pub unsafe extern "C" fn csbindgen_srt_epoll_uwait(
     eid: c_int,
     fdsSet: *mut SRT_EPOLL_EVENT,
     fdsSize: c_int,
-    msTimeOut: i64    
+    msTimeOut: i64
 ) -> c_int
 {
     srt_epoll_uwait(
@@ -681,7 +681,7 @@ pub unsafe extern "C" fn csbindgen_srt_epoll_uwait(
 #[no_mangle]
 pub unsafe extern "C" fn csbindgen_srt_epoll_set(
     eid: c_int,
-    flags: i32    
+    flags: i32
 ) -> i32
 {
     srt_epoll_set(
@@ -692,7 +692,7 @@ pub unsafe extern "C" fn csbindgen_srt_epoll_set(
 
 #[no_mangle]
 pub unsafe extern "C" fn csbindgen_srt_epoll_release(
-    eid: c_int    
+    eid: c_int
 ) -> c_int
 {
     srt_epoll_release(
@@ -702,7 +702,7 @@ pub unsafe extern "C" fn csbindgen_srt_epoll_release(
 
 #[no_mangle]
 pub unsafe extern "C" fn csbindgen_srt_setloglevel(
-    ll: c_int    
+    ll: c_int
 )
 {
     srt_setloglevel(
@@ -712,7 +712,7 @@ pub unsafe extern "C" fn csbindgen_srt_setloglevel(
 
 #[no_mangle]
 pub unsafe extern "C" fn csbindgen_srt_addlogfa(
-    fa: c_int    
+    fa: c_int
 )
 {
     srt_addlogfa(
@@ -722,7 +722,7 @@ pub unsafe extern "C" fn csbindgen_srt_addlogfa(
 
 #[no_mangle]
 pub unsafe extern "C" fn csbindgen_srt_dellogfa(
-    fa: c_int    
+    fa: c_int
 )
 {
     srt_dellogfa(
@@ -733,7 +733,7 @@ pub unsafe extern "C" fn csbindgen_srt_dellogfa(
 #[no_mangle]
 pub unsafe extern "C" fn csbindgen_srt_resetlogfa(
     fara: *const c_int,
-    fara_size: usize    
+    fara_size: usize
 )
 {
     srt_resetlogfa(
@@ -745,7 +745,7 @@ pub unsafe extern "C" fn csbindgen_srt_resetlogfa(
 #[no_mangle]
 pub unsafe extern "C" fn csbindgen_srt_setloghandler(
     opaque: *mut c_void,
-    handler: SRT_LOG_HANDLER_FN    
+    handler: SRT_LOG_HANDLER_FN
 )
 {
     srt_setloghandler(
@@ -756,7 +756,7 @@ pub unsafe extern "C" fn csbindgen_srt_setloghandler(
 
 #[no_mangle]
 pub unsafe extern "C" fn csbindgen_srt_setlogflags(
-    flags: c_int    
+    flags: c_int
 )
 {
     srt_setlogflags(
@@ -768,7 +768,7 @@ pub unsafe extern "C" fn csbindgen_srt_setlogflags(
 pub unsafe extern "C" fn csbindgen_srt_getsndbuffer(
     sock: SRTSOCKET,
     blocks: *mut usize,
-    bytes: *mut usize    
+    bytes: *mut usize
 ) -> c_int
 {
     srt_getsndbuffer(
@@ -780,7 +780,7 @@ pub unsafe extern "C" fn csbindgen_srt_getsndbuffer(
 
 #[no_mangle]
 pub unsafe extern "C" fn csbindgen_srt_getrejectreason(
-    sock: SRTSOCKET    
+    sock: SRTSOCKET
 ) -> c_int
 {
     srt_getrejectreason(
@@ -791,7 +791,7 @@ pub unsafe extern "C" fn csbindgen_srt_getrejectreason(
 #[no_mangle]
 pub unsafe extern "C" fn csbindgen_srt_setrejectreason(
     sock: SRTSOCKET,
-    value: c_int    
+    value: c_int
 ) -> c_int
 {
     srt_setrejectreason(
@@ -802,7 +802,7 @@ pub unsafe extern "C" fn csbindgen_srt_setrejectreason(
 
 #[no_mangle]
 pub unsafe extern "C" fn csbindgen_srt_rejectreason_str(
-    id: c_int    
+    id: c_int
 ) -> *const c_char
 {
     srt_rejectreason_str(
@@ -812,7 +812,7 @@ pub unsafe extern "C" fn csbindgen_srt_rejectreason_str(
 
 #[no_mangle]
 pub unsafe extern "C" fn csbindgen_srt_getversion(
-    
+
 ) -> u32
 {
     srt_getversion(
@@ -822,7 +822,7 @@ pub unsafe extern "C" fn csbindgen_srt_getversion(
 
 #[no_mangle]
 pub unsafe extern "C" fn csbindgen_srt_time_now(
-    
+
 ) -> i64
 {
     srt_time_now(
@@ -832,7 +832,7 @@ pub unsafe extern "C" fn csbindgen_srt_time_now(
 
 #[no_mangle]
 pub unsafe extern "C" fn csbindgen_srt_connection_time(
-    sock: SRTSOCKET    
+    sock: SRTSOCKET
 ) -> i64
 {
     srt_connection_time(
@@ -842,7 +842,7 @@ pub unsafe extern "C" fn csbindgen_srt_connection_time(
 
 #[no_mangle]
 pub unsafe extern "C" fn csbindgen_srt_clock_type(
-    
+
 ) -> c_int
 {
     srt_clock_type(
@@ -852,7 +852,7 @@ pub unsafe extern "C" fn csbindgen_srt_clock_type(
 
 #[no_mangle]
 pub unsafe extern "C" fn csbindgen_srt_create_group(
-    arg1: SRT_GROUP_TYPE    
+    arg1: SRT_GROUP_TYPE
 ) -> SRTSOCKET
 {
     srt_create_group(
@@ -862,7 +862,7 @@ pub unsafe extern "C" fn csbindgen_srt_create_group(
 
 #[no_mangle]
 pub unsafe extern "C" fn csbindgen_srt_groupof(
-    socket: SRTSOCKET    
+    socket: SRTSOCKET
 ) -> SRTSOCKET
 {
     srt_groupof(
@@ -874,7 +874,7 @@ pub unsafe extern "C" fn csbindgen_srt_groupof(
 pub unsafe extern "C" fn csbindgen_srt_group_data(
     socketgroup: SRTSOCKET,
     output: *mut SRT_SOCKGROUPDATA,
-    inoutlen: *mut usize    
+    inoutlen: *mut usize
 ) -> c_int
 {
     srt_group_data(
@@ -886,7 +886,7 @@ pub unsafe extern "C" fn csbindgen_srt_group_data(
 
 #[no_mangle]
 pub unsafe extern "C" fn csbindgen_srt_create_config(
-    
+
 ) -> *mut SRT_SOCKOPT_CONFIG
 {
     srt_create_config(
@@ -896,7 +896,7 @@ pub unsafe extern "C" fn csbindgen_srt_create_config(
 
 #[no_mangle]
 pub unsafe extern "C" fn csbindgen_srt_delete_config(
-    config: *mut SRT_SOCKOPT_CONFIG    
+    config: *mut SRT_SOCKOPT_CONFIG
 )
 {
     srt_delete_config(
@@ -909,7 +909,7 @@ pub unsafe extern "C" fn csbindgen_srt_config_add(
     config: *mut SRT_SOCKOPT_CONFIG,
     option: SRT_SOCKOPT,
     contents: *const c_void,
-    len: c_int    
+    len: c_int
 ) -> c_int
 {
     srt_config_add(
@@ -924,7 +924,7 @@ pub unsafe extern "C" fn csbindgen_srt_config_add(
 pub unsafe extern "C" fn csbindgen_srt_prepare_endpoint(
     src: *const sockaddr,
     adr: *const sockaddr,
-    namelen: c_int    
+    namelen: c_int
 ) -> SRT_SOCKGROUPCONFIG
 {
     srt_prepare_endpoint(
@@ -938,7 +938,7 @@ pub unsafe extern "C" fn csbindgen_srt_prepare_endpoint(
 pub unsafe extern "C" fn csbindgen_srt_connect_group(
     group: SRTSOCKET,
     name: *mut SRT_SOCKGROUPCONFIG,
-    arraysize: c_int    
+    arraysize: c_int
 ) -> c_int
 {
     srt_connect_group(

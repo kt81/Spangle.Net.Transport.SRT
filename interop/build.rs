@@ -1,4 +1,3 @@
-use cmake::Config;
 use std::collections::HashSet;
 use std::env;
 
@@ -14,7 +13,19 @@ impl bindgen::callbacks::ParseCallbacks for IgnoreMacros {
         }
     }
 }
-
+// macro_rules! str {
+//     ($pathBuf:tt) => {
+//         $pathBuf.clone().to_str().unwrap()
+//     };
+// }
+// macro_rules! safe_path {
+//     ($pathBuf:tt) => {
+//         $pathBuf.clone().to_str().unwrap().replace("\\", "/")
+//     };
+//     ($pathBuf:tt, $joinPath:tt) => {
+//         $pathBuf.clone().join($joinPath).to_str().unwrap().replace("\\", "/")
+//     };
+// }
 fn main() {
     let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap();
     let target_arch = env::var("CARGO_CFG_TARGET_ARCH").unwrap();
@@ -31,7 +42,7 @@ fn main() {
     if target_os == "windows" {
         triplet = format!("{}-windows-static-md", arch);
         stlib_ext = ".lib";
-        cmake_cxx_flags = "/EHsc";
+        cmake_cxx_flags = "/EHsc /utf-8 -DWIN32_LEAN_AND_MEAN";
     } else if target_os == "linux" {
         triplet = format!("{}-linux", arch);
         stlib_ext = ".a";
@@ -57,31 +68,28 @@ fn main() {
         .collect(),
     );
 
-    let vcpkg_root = env::current_dir().unwrap().join("vcpkg");
-    let toolchain_file = vcpkg_root
-        .clone()
-        .join("scripts")
-        .join("buildsystems")
-        .join("vcpkg.cmake");
-    let openssl_root = vcpkg_root
-        .clone()
-        .join("packages")
-        .join("openssl_".to_owned() + triplet.as_str());
-    let include_dir = openssl_root.clone().join("include");
-    let crypto_lib = openssl_root
-        .clone()
-        .join("lib")
-        .join("libcrypto".to_owned() + stlib_ext);
+    // Build BoringSSL
+    let ssl_dst = cmake::Config::new("deps/boringssl")
+        .define("CMAKE_C_FLAGS", cmake_cxx_flags)
+        .define("CMAKE_CXX_FLAGS", cmake_cxx_flags)
+        .define("BUILD_SHARED_LIBS", "FALSE")
+        .generator("Ninja")
+        .build();
 
-    let dst = Config::new("srt")
+    // let ssl_include = ssl_dst.clone().join("include");
+    let ssl_crypto_lib = ssl_dst.clone().join(format!("lib/crypto{}", stlib_ext));
+
+    let dst = cmake::Config::new("deps/srt")
         // .very_verbose(true)
-        .define("CMAKE_TOOLCHAIN_FILE", toolchain_file)
+        .define("CMAKE_C_FLAGS", cmake_cxx_flags)
         .define("CMAKE_CXX_FLAGS", cmake_cxx_flags)
         .define("ENABLE_STATIC", "ON")
         .define("ENABLE_STDCXX_SYNC", "ON")
-        .define("OPENSSL_ROOT_DIR", openssl_root)
-        .define("OPENSSL_INCLUDE_DIR", include_dir)
-        .define("OPENSSL_CRYPTO_LIBRARY", crypto_lib)
+        .define("OPENSSL_USE_STATIC_LIBS", "ON")
+        .define("OPENSSL_ROOT_DIR", ssl_dst)
+        // .define("OPENSSL_INCLUDE_DIR", ssl_include)
+        .define("OPENSSL_CRYPTO_LIBRARY", ssl_crypto_lib)
+        .generator("Ninja")
         .build();
 
     let mut lib_path = dst.clone();
@@ -91,14 +99,14 @@ fn main() {
         "cargo:rustc-link-search=native=vcpkg/installed/{}/lib",
         triplet
     );
+
+    println!("cargo:rustc-link-lib=static=crypto");
     if target_os == "windows" {
-        println!("cargo:rustc-link-lib=dylib=user32");
-        println!("cargo:rustc-link-lib=dylib=crypt32");
-        println!("cargo:rustc-link-lib=static=libcrypto");
+        // println!("cargo:rustc-link-lib=dylib=user32");
+        // println!("cargo:rustc-link-lib=dylib=crypt32");
         println!("cargo:rustc-link-lib=static=srt_static");
     } else {
         println!("cargo:rustc-link-lib=dylib=stdc++");
-        println!("cargo:rustc-link-lib=static=crypto");
         println!("cargo:rustc-link-lib=static=srt");
     }
 

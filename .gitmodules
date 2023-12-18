@@ -2,5 +2,8 @@
 	path = interop/vcpkg
 	url = https://github.com/microsoft/vcpkg.git
 [submodule "interop/srt"]
-	path = interop/srt
+	path = interop/deps/srt
 	url = https://github.com/Haivision/srt.git
+[submodule "interop/deps/boringssl"]
+	path = interop/deps/boringssl
+	url = https://github.com/google/boringssl.git

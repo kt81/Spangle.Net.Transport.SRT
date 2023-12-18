@@ -22,11 +22,15 @@ public sealed class SRTListener : IDisposable
 
     private static readonly int s_socketAddressSize = Marshal.SizeOf<sockaddr>();
 
-    private readonly IPEndPoint           _serverSocketEP;
-    private readonly SRTSOCKET            _listenHandle;
-    private readonly SRTSOCKET            _listenEpollId;
-    private readonly SRTSessionEpollProxy _sessionEpollProxy;
-    private readonly ILogger              _logger;
+    private readonly IPEndPoint _serverSocketEP;
+    private readonly SRTSOCKET  _listenHandle;
+    private readonly SRTSOCKET  _listenEpollId;
+    private readonly ILogger    _logger;
+
+    private readonly CancellationTokenSource _cts;
+
+    private readonly IList<SRTSessionEpollHandler> _sessionEpollHandlers;
+    private          SRTSessionEpollHandler        _sessionEpollHandler;
 
     private bool _active;
     private bool _disposed;
@@ -44,12 +48,32 @@ public sealed class SRTListener : IDisposable
         ArgumentNullException.ThrowIfNull(localEP);
         _serverSocketEP = localEP;
         _logger = logger ?? new NullLogger<SRTListener>();
+        _cts = new CancellationTokenSource();
 
         _listenHandle = srt_create_socket().ThrowIfError();
         _listenEpollId = srt_epoll_create().ThrowIfError();
-        // TODO ct
-        _sessionEpollProxy = new SRTSessionEpollProxy(DefaultHandleCapacity, _logger, default);
-        _sessionEpollProxy.Start().SafeFireAndForget(e => _logger.LogError("Fatal: {}", e));
+        _sessionEpollHandlers = new List<SRTSessionEpollHandler>();
+        _sessionEpollHandler = AddNewHandler();
+    }
+
+    private SRTSessionEpollHandler AddNewHandler()
+    {
+        var handler = new SRTSessionEpollHandler(DefaultHandleCapacity, _logger, _cts.Token);
+        handler.Start().SafeFireAndForget(e => _logger.LogError("Fatal: {}", e));
+        _sessionEpollHandlers.Add(handler);
+        return handler;
+    }
+
+    private SRTSessionEpollHandler FindOrAddHandler()
+    {
+        foreach (SRTSessionEpollHandler handler in _sessionEpollHandlers)
+        {
+            if (!handler.IsFull)
+            {
+                return handler;
+            }
+        }
+        return AddNewHandler();
     }
 
     public unsafe void Start(int backlog = (int)SocketOptionName.MaxConnections)
@@ -85,6 +109,12 @@ public sealed class SRTListener : IDisposable
         _active = true;
     }
 
+    /// <summary>
+    /// Accept new SRT connection
+    /// This method is not thread-safe so call sequential
+    /// </summary>
+    /// <param name="ct"></param>
+    /// <returns></returns>
     public ValueTask<SRTClient> AcceptSRTClientAsync(CancellationToken ct = default)
     {
         return WaitAndWrap(AcceptAsync(ct));
@@ -93,9 +123,9 @@ public sealed class SRTListener : IDisposable
         {
             (int peerHandle, IPEndPoint ep) = await task.ConfigureAwait(false);
             var client = new SRTClient(peerHandle, ep, _logger);
-            if (!_sessionEpollProxy.TryAddToControl(client))
+            if (!_sessionEpollHandler.TryAddToControl(client))
             {
-                // TODO create new instance if fail
+                _sessionEpollHandler = FindOrAddHandler();
             }
 
             return client;
@@ -141,10 +171,10 @@ public sealed class SRTListener : IDisposable
 
             var handle = eventHandles[0];
             SRTSOCKET s = handle.fd;
-            var events = (SRT_EPOLL_OPT)handle.events;
-            _logger.LogDebug("Received events on listen (peer: {}): {}", s, events);
+            //var events = (SRT_EPOLL_OPT)handle.events;
+            //_logger.LogTrace("Received events on listen (peer: {}): {}", s, events);
             SRT_SOCKSTATUS status = (SRT_SOCKSTATUS)srt_getsockstate(s);
-            _logger.LogDebug("Socket status ({}): {}", s, status);
+            //_logger.LogTrace("Socket status ({}): {}", s, status);
             if (status is SRT_SOCKSTATUS.SRTS_BROKEN
                 or SRT_SOCKSTATUS.SRTS_NONEXIST
                 or SRT_SOCKSTATUS.SRTS_CLOSED)

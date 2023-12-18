@@ -9,12 +9,11 @@ using static Spangle.Interop.Native.LibSRT;
 namespace Spangle.Net.Transport.SRT;
 
 /// <summary>
-/// SRTSessionEpollProxy
 /// Control multiple connections until the capacity.
 /// The capacity is not promised strictly.
 /// </summary>
 [SuppressMessage("ReSharper", "BuiltInTypeReferenceStyle")]
-internal sealed class SRTSessionEpollProxy : IDisposable
+internal sealed class SRTSessionEpollHandler : IDisposable
 {
     private readonly int               _capacity;
     private readonly ILogger           _logger;
@@ -25,7 +24,9 @@ internal sealed class SRTSessionEpollProxy : IDisposable
 
     private bool _isActive;
 
-    internal SRTSessionEpollProxy(int capacity, ILogger logger, CancellationToken token)
+    public bool IsFull => _sessionHandles.Count >= _capacity;
+
+    internal SRTSessionEpollHandler(int capacity, ILogger logger, CancellationToken token)
     {
         _logger = logger;
         _token = token;
@@ -37,7 +38,7 @@ internal sealed class SRTSessionEpollProxy : IDisposable
 
     internal unsafe bool TryAddToControl(SRTClient client)
     {
-        if (_sessionHandles.Count >= _capacity)
+        if (IsFull)
         {
             return false;
         }
@@ -109,7 +110,7 @@ internal sealed class SRTSessionEpollProxy : IDisposable
                 ref SRT_EPOLL_EVENT_STR handle = ref handles[i];
                 SRTSOCKET s = handle.fd;
                 var events = (SRT_EPOLL_OPT)handle.events;
-                _logger.LogDebug("Incoming epoll event ({}): {}", s, events);
+                _logger.LogTrace("Incoming epoll event ({}): {}", s, events);
                 SRT_SOCKSTATUS status = (SRT_SOCKSTATUS)srt_getsockstate(s);
 
                 if (status is SRT_SOCKSTATUS.SRTS_BROKEN
@@ -118,9 +119,9 @@ internal sealed class SRTSessionEpollProxy : IDisposable
                 {
                     if (_sessionHandles.TryGetValue(s, out var cl))
                     {
-                        srt_close(s).LogIfError(_logger);
                         srt_epoll_remove_usock(_sessionEpollId, s).LogIfError(_logger);
-                        cl.Dispose();
+                        srt_close(s).LogIfError(_logger);
+                        cl.MarkCompleted();
                         ((IDictionary)_sessionHandles).Remove(s);
                         _logger.LogDebug("Source disconnected: {}", status);
                     }
@@ -147,5 +148,5 @@ internal sealed class SRTSessionEpollProxy : IDisposable
         GC.SuppressFinalize(this);
     }
 
-    ~SRTSessionEpollProxy() => ReleaseUnmanagedResources();
+    ~SRTSessionEpollHandler() => ReleaseUnmanagedResources();
 }

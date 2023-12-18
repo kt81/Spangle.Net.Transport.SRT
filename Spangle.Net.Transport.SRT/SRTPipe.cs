@@ -89,7 +89,7 @@ internal sealed class SRTPipe : IDuplexPipe, IDisposable
 
         while (true)
         {
-            if (self._cancellationToken.IsCancellationRequested)
+            if (self._cancellationToken.IsCancellationRequested || self._disposed)
             {
                 break;
             }
@@ -101,7 +101,18 @@ internal sealed class SRTPipe : IDuplexPipe, IDisposable
     private static async ValueTask WriteToSRT(SRTPipe self)
     {
         var reader = self._sendPipe.Reader;
-        var readResult = await reader.ReadAsync(self._cancellationToken).ConfigureAwait(false);
+        ReadResult readResult;
+
+        try
+        {
+            readResult = await reader.ReadAsync(self._cancellationToken).ConfigureAwait(false);
+        }
+        catch (InvalidOperationException)
+        {
+            if (self._disposed) return;
+            throw;
+        }
+
         if (readResult.IsCanceled || readResult.IsCompleted)
         {
             return;
