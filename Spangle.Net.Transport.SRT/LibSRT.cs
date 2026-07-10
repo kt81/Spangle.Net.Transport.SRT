@@ -89,13 +89,15 @@ internal static unsafe partial class LibSRT
             }
         }
 
-        public readonly uint Address
+        public readonly IPAddress Address
         {
             get
             {
                 fixed (byte* p = sin_addr)
                 {
-                    return BinaryPrimitives.ReadUInt16BigEndian(new Span<byte>(p, 4));
+                    // network byte order as-is; the old code read a UInt16 out of the
+                    // 4 address bytes and reported bogus remote addresses
+                    return new IPAddress(new ReadOnlySpan<byte>(p, 4));
                 }
             }
         }

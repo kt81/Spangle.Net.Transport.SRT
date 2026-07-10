@@ -4,7 +4,6 @@ using System.Net;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
-using AsyncAwaitBestPractices;
 using Microsoft.Extensions.Logging;
 using Spangle.Interop.Native;
 using Xunit.Abstractions;
@@ -50,13 +49,17 @@ public sealed class SRTListenerTest : IDisposable
 
         var tServer = Task.Run(async () =>
         {
+            var receives = new List<Task>(numConnections);
             for (var h = 0; h < numConnections; h++)
             {
                 if (ct.IsCancellationRequested) break;
                 var client = await listener.AcceptSRTClientAsync(ct);
-                ReceiveAny(client, ct).SafeFireAndForget(e => Assert.Fail(e.Message));
+                receives.Add(ReceiveAny(client, ct));
             }
-        }, ct).ConfigureAwait(false);
+
+            // every accepted connection must actually deliver data
+            await Task.WhenAll(receives);
+        }, ct);
 
         await Task.Delay(200, ct);
 
@@ -92,6 +95,72 @@ public sealed class SRTListenerTest : IDisposable
             {
                 proc.Kill();
                 proc.Dispose();
+            }
+        }
+    }
+
+    /// <summary>
+    /// A slow consumer must not blow up memory nor deadlock: the epoll handler
+    /// masks EPOLL_IN while the pipe flush is pending and re-arms it after the
+    /// consumer catches up. The read loop must still observe completion when the
+    /// sender disconnects.
+    /// </summary>
+    [Fact]
+    public async Task TestSlowConsumerBackpressure()
+    {
+        var ep = IPEndPoint.Parse("0.0.0.0:9998");
+        using var listener = new SRTListener(ep, _logger);
+        listener.Start();
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        var ct = cts.Token;
+
+        ValueTask<SRTClient> acceptTask = listener.AcceptSRTClientAsync(ct);
+
+        var psInfo = new ProcessStartInfo
+        {
+            FileName = "ffmpeg",
+            // ~500 KB/s so that a 200 ms consumer stall accumulates ~100 KB, well past
+            // the pipe's 64 KB pause threshold: the flush goes async and the epoll
+            // handler must take the mask/re-arm path.
+            Arguments = "-f lavfi -re -i testsrc2=duration=3:rate=30:size=1280x720 " +
+                        "-pix_fmt yuv420p -c:v libx264 -b:v 4000k -minrate 3000k -bufsize 1000k -g 30 -preset veryfast " +
+                        "-f mpegts srt://localhost:9998",
+            CreateNoWindow = true,
+            UseShellExecute = false,
+        };
+        using var proc = Process.Start(psInfo) ?? throw new Exception("Could not create ffmpeg process.");
+
+        try
+        {
+            using var client = await acceptTask;
+            var reader = client.Pipe.Input;
+            long total = 0;
+            var reads = 0;
+            while (true)
+            {
+                var result = await reader.ReadAsync(ct);
+                total += result.Buffer.Length;
+                reads++;
+                reader.AdvanceTo(result.Buffer.End);
+                if (result.IsCompleted)
+                {
+                    break;
+                }
+
+                // Force the pipe past its pause threshold repeatedly; SRT live mode
+                // may drop late packets (TLPKTDROP), but the stream must keep
+                // flowing and complete when the sender goes away.
+                await Task.Delay(200, ct);
+            }
+
+            s_testOutputHelper!.WriteLine($"received {total} bytes in {reads} reads");
+            Assert.True(total > 100_000, $"received only {total} bytes");
+        }
+        finally
+        {
+            if (!proc.HasExited)
+            {
+                proc.Kill();
             }
         }
     }

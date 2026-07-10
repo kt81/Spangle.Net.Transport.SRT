@@ -1,9 +1,9 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Net;
 using System.Net.Sockets;
 using System.Runtime.InteropServices;
-using AsyncAwaitBestPractices;
+using System.Threading.Channels;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Spangle.Interop.Native;
@@ -16,6 +16,7 @@ public sealed class SRTListener : IDisposable
 {
     private const int AcceptTimeout         = 100;
     private const int DefaultHandleCapacity = 10;
+    private const int AcceptQueueCapacity   = 16;
 
     // ReSharper disable once UnusedMember.Local
     private static readonly StaticFinalizeHandle s_finalizeHandle = StaticFinalizeHandle.Instance;
@@ -28,6 +29,10 @@ public sealed class SRTListener : IDisposable
     private readonly ILogger    _logger;
 
     private readonly CancellationTokenSource _cts;
+
+    // The accept thread produces accepted sockets; AcceptSRTClientAsync consumes
+    // them truly asynchronously. The bounded capacity acts as the accept backlog.
+    private readonly Channel<(SRTSOCKET Handle, IPEndPoint RemoteEndPoint)> _acceptQueue;
 
     private readonly IList<SRTSessionEpollHandler> _sessionEpollHandlers;
     private          SRTSessionEpollHandler        _sessionEpollHandler;
@@ -49,6 +54,10 @@ public sealed class SRTListener : IDisposable
         _serverSocketEP = localEP;
         _logger = logger ?? new NullLogger<SRTListener>();
         _cts = new CancellationTokenSource();
+        _acceptQueue = Channel.CreateBounded<(SRTSOCKET, IPEndPoint)>(new BoundedChannelOptions(AcceptQueueCapacity)
+        {
+            SingleWriter = true,
+        });
 
         _listenHandle = srt_create_socket().ThrowIfError();
         _listenEpollId = srt_epoll_create().ThrowIfError();
@@ -59,7 +68,7 @@ public sealed class SRTListener : IDisposable
     private SRTSessionEpollHandler AddNewHandler()
     {
         var handler = new SRTSessionEpollHandler(DefaultHandleCapacity, _logger, _cts.Token);
-        handler.Start().SafeFireAndForget(e => _logger.LogError("Fatal: {}", e));
+        handler.Start();
         _sessionEpollHandlers.Add(handler);
         return handler;
     }
@@ -86,14 +95,6 @@ public sealed class SRTListener : IDisposable
         var falsy = 0;
         srt_setsockopt(_listenHandle, 0, (int)SRT_SOCKOPT.SRTO_RCVSYN, &falsy, sizeof(int)).ThrowIfError();
 
-        // The C example says the following, but I see no reason why it should be this size.
-        // https://github.com/Haivision/srt/blob/39822840c506d72cef5a742d28f32ea28e144345/examples/recvlive.cpp#L66-L71
-        // if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-        // {
-        //     var mss = 1052;
-        //     srt_setsockopt(_listenHandle, 0, (int)SRT_SOCKOPT.SRTO_MSS, &mss, sizeof(int)).ThrowIfError();
-        // }
-
         var sockAddrIn = new sockaddr_in();
         var sin = WriteSockaddrIn(_serverSocketEP, &sockAddrIn, s_socketAddressSize);
         srt_bind(_listenHandle, sin, s_socketAddressSize).ThrowIfError();
@@ -106,103 +107,114 @@ public sealed class SRTListener : IDisposable
         var events = (int)(SRT_EPOLL_OPT.SRT_EPOLL_IN | SRT_EPOLL_OPT.SRT_EPOLL_ERR);
         srt_epoll_add_usock(_listenEpollId, _listenHandle, &events).ThrowIfError();
 
+        // The accept loop blocks in srt_epoll_uwait, so it lives on its own thread;
+        // consumers only ever touch the channel.
+        var thread = new Thread(AcceptLoop)
+        {
+            IsBackground = true,
+            Name = "srt-accept",
+        };
+        thread.Start();
+
         _active = true;
     }
 
     /// <summary>
-    /// Accept new SRT connection
-    /// This method is not thread-safe so call sequential
+    /// Accepts a new SRT connection.
+    /// Truly asynchronous: awaiting this does not block any thread.
     /// </summary>
-    /// <param name="ct"></param>
-    /// <returns></returns>
-    public ValueTask<SRTClient> AcceptSRTClientAsync(CancellationToken ct = default)
-    {
-        return WaitAndWrap(AcceptAsync(ct));
-
-        async ValueTask<SRTClient> WaitAndWrap(ValueTask<(SRTSOCKET, IPEndPoint)> task)
-        {
-            (int peerHandle, IPEndPoint ep) = await task.ConfigureAwait(false);
-            var client = new SRTClient(peerHandle, ep, _logger);
-            if (!_sessionEpollHandler.TryAddToControl(client))
-            {
-                _sessionEpollHandler = FindOrAddHandler();
-            }
-
-            return client;
-        }
-    }
-
-    /// <summary>
-    /// Accept connection with epoll feature (not a system call, libsrt's own implementation).
-    /// Once the connection is accepted, the socket handle is returned immediately and is not included in this epoll instance.
-    /// This method uses srt_epoll_*, but the purpose is only for cancellation.
-    /// </summary>
-    /// <param name="ct"></param>
-    /// <returns></returns>
-    /// <exception cref="InvalidOperationException"></exception>
-    public unsafe ValueTask<(SRTSOCKET, IPEndPoint)> AcceptAsync(CancellationToken ct = default)
+    public async ValueTask<SRTClient> AcceptSRTClientAsync(CancellationToken ct = default)
     {
         if (!_active)
         {
             throw new InvalidOperationException("SRTListener has not Start()-ed.");
         }
 
-        // Do not change this over 1. Otherwise the return value must be AsyncEnumerable or possible to drop some connections.
-        const int numClientPerAcceptIsOne = 1;
-        SRT_EPOLL_EVENT_STR* eventHandles = stackalloc SRT_EPOLL_EVENT_STR[numClientPerAcceptIsOne];
-        while (true)
-        {
-            ct.ThrowIfCancellationRequested();
+        (SRTSOCKET peerHandle, IPEndPoint ep) = await _acceptQueue.Reader.ReadAsync(ct).ConfigureAwait(false);
+        var client = new SRTClient(peerHandle, ep, _logger);
 
-            int numHandles = srt_epoll_uwait(_listenEpollId, eventHandles, numClientPerAcceptIsOne, AcceptTimeout);
-            Debug.Assert(numHandles <= numClientPerAcceptIsOne);
-            if (numHandles < numClientPerAcceptIsOne)
+        // A full handler is not an error: find or grow, then register.
+        // (TryAddToControl throws on real epoll failures.)
+        while (!_sessionEpollHandler.TryAddToControl(client))
+        {
+            _sessionEpollHandler = FindOrAddHandler();
+        }
+
+        return client;
+    }
+
+    /// <summary>
+    /// Blocking accept loop on the dedicated thread. Uses srt_epoll only to make
+    /// the wait cancellable; accepted sockets are handed to the channel.
+    /// </summary>
+    private unsafe void AcceptLoop()
+    {
+        ChannelWriter<(SRTSOCKET, IPEndPoint)> queue = _acceptQueue.Writer;
+        try
+        {
+            // Do not change this over 1. Otherwise some connections may be dropped.
+            const int numClientPerAcceptIsOne = 1;
+            SRT_EPOLL_EVENT_STR* eventHandles = stackalloc SRT_EPOLL_EVENT_STR[numClientPerAcceptIsOne];
+
+            while (!_cts.Token.IsCancellationRequested)
             {
-                if (numHandles == -1)
+                int numHandles = srt_epoll_uwait(_listenEpollId, eventHandles, numClientPerAcceptIsOne, AcceptTimeout);
+                Debug.Assert(numHandles <= numClientPerAcceptIsOne);
+                if (numHandles < numClientPerAcceptIsOne)
                 {
-                    if (IsLastError(SRT_ERRNO.SRT_ETIMEOUT))
+                    if (numHandles == -1 && IsLastError(SRT_ERRNO.SRT_ETIMEOUT))
                     {
                         _logger.LogError("Error on accepting: {}", GetLastErrorStr());
                     }
+
+                    continue;
                 }
 
-                continue;
+                SRTSOCKET s = eventHandles[0].fd;
+                var status = (SRT_SOCKSTATUS)srt_getsockstate(s);
+                if (status is SRT_SOCKSTATUS.SRTS_BROKEN
+                    or SRT_SOCKSTATUS.SRTS_NONEXIST
+                    or SRT_SOCKSTATUS.SRTS_CLOSED)
+                {
+                    // The only socket in this epoll is the listener itself: fatal.
+                    srt_close(s).LogIfError(_logger);
+                    throw new SRTException("Listener socket broken: " + status);
+                }
+
+                Debug.Assert(status == SRT_SOCKSTATUS.SRTS_LISTENING);
+
+                var peerAddr = new sockaddr_in();
+                int peerAddrSize = s_socketAddressSize;
+                SRTSOCKET peerHandle = srt_accept(_listenHandle, (sockaddr*)&peerAddr, &peerAddrSize);
+                if (peerHandle == SRT_INVALID_SOCK)
+                {
+                    _logger.LogError("srt_accept failed: {}", GetLastErrorStr());
+                    continue;
+                }
+
+                var ep = new IPEndPoint(peerAddr.Address, peerAddr.Port);
+                _logger.LogDebug("Accepted peer handle: {} ({})", peerHandle, ep);
+
+                // Block (this thread only) while consumers are behind; the bounded
+                // queue is the accept backlog.
+                while (!queue.TryWrite((peerHandle, ep)))
+                {
+                    if (_cts.Token.IsCancellationRequested)
+                    {
+                        srt_close(peerHandle).LogIfError(_logger);
+                        return;
+                    }
+                    Thread.Sleep(10);
+                }
             }
 
-            var handle = eventHandles[0];
-            SRTSOCKET s = handle.fd;
-            //var events = (SRT_EPOLL_OPT)handle.events;
-            //_logger.LogTrace("Received events on listen (peer: {}): {}", s, events);
-            SRT_SOCKSTATUS status = (SRT_SOCKSTATUS)srt_getsockstate(s);
-            //_logger.LogTrace("Socket status ({}): {}", s, status);
-            if (status is SRT_SOCKSTATUS.SRTS_BROKEN
-                or SRT_SOCKSTATUS.SRTS_NONEXIST
-                or SRT_SOCKSTATUS.SRTS_CLOSED)
-            {
-                srt_close(s).ThrowIfError();
-                throw new SRTException("Source disconnected: " + status);
-            }
-
-            Debug.Assert(status == SRT_SOCKSTATUS.SRTS_LISTENING);
-
-            var peerAddr = new sockaddr_in();
-            int peerAddrSize = s_socketAddressSize;
-            SRTSOCKET peerHandle = srt_accept(_listenHandle, (sockaddr*)&peerAddr, &peerAddrSize);
-            if (peerHandle == SRT_INVALID_SOCK)
-            {
-                ThrowWithErrorStr();
-            }
-
-            var ep = ConvertToEndPoint(peerAddr);
-            _logger.LogDebug("Accepted peer handle: {} ({})", peerHandle, ep);
-
-            return ValueTask.FromResult((peerHandle, ep));
+            queue.TryComplete();
         }
-    }
-
-    private static IPEndPoint ConvertToEndPoint(in sockaddr_in peerAddr)
-    {
-        return new IPEndPoint(peerAddr.Address, peerAddr.Port);
+        catch (Exception e)
+        {
+            _logger.LogError(e, "SRT accept loop stopped");
+            queue.TryComplete(e);
+        }
     }
 
     public void Dispose()
@@ -211,6 +223,9 @@ public sealed class SRTListener : IDisposable
         {
             return;
         }
+
+        _cts.Cancel();
+        _acceptQueue.Writer.TryComplete();
 
         if (_listenHandle >= 0)
         {

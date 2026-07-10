@@ -22,7 +22,7 @@ public class SRTClient : IDisposable
 
     internal SRTClient(SRTSOCKET peerHandle, EndPoint remoteEndPoint, ILogger logger)
     {
-        InternalPipe = new SRTPipe(peerHandle);
+        InternalPipe = new SRTPipe(peerHandle, logger);
         PeerHandle = peerHandle;
         _logger = logger;
         RemoteEndPoint = remoteEndPoint;

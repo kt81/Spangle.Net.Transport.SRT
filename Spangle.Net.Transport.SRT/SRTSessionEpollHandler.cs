@@ -1,7 +1,7 @@
-﻿using System.Collections;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.IO.Pipelines;
 using Microsoft.Extensions.Logging;
 using Spangle.Interop.Native;
 using static Spangle.Interop.Native.LibSRT;
@@ -9,7 +9,7 @@ using static Spangle.Interop.Native.LibSRT;
 namespace Spangle.Net.Transport.SRT;
 
 /// <summary>
-/// Control multiple connections until the capacity.
+/// Controls multiple connections up to the capacity on one dedicated polling thread.
 /// The capacity is not promised strictly.
 /// </summary>
 [SuppressMessage("ReSharper", "BuiltInTypeReferenceStyle")]
@@ -32,10 +32,14 @@ internal sealed class SRTSessionEpollHandler : IDisposable
         _token = token;
         _capacity = capacity;
         int c = capacity * 2;
-        _sessionHandles = new ConcurrentDictionary<int, SRTClient>(c, c);
+        _sessionHandles = new ConcurrentDictionary<SRTSOCKET, SRTClient>(c, c);
         _sessionEpollId = srt_epoll_create();
     }
 
+    /// <summary>
+    /// Registers the client with this handler.
+    /// Returns false only when the handler is full; a failing epoll registration throws.
+    /// </summary>
     internal unsafe bool TryAddToControl(SRTClient client)
     {
         if (IsFull)
@@ -45,95 +49,159 @@ internal sealed class SRTSessionEpollHandler : IDisposable
 
         SRTSOCKET peerHandle = client.PeerHandle;
         var events = (int)(SRT_EPOLL_OPT.SRT_EPOLL_IN | SRT_EPOLL_OPT.SRT_EPOLL_ERR);
-        int result = srt_epoll_add_usock(_sessionEpollId, peerHandle, &events);
-        if (result < 0)
-        {
-            _logger.LogWarning("TryAdd: {}", GetLastErrorStr());
-            return false;
-        }
+        srt_epoll_add_usock(_sessionEpollId, peerHandle, &events).ThrowIfError();
 
         _sessionHandles[peerHandle] = client;
 
         return true;
     }
 
-    public Task Start()
+    public void Start()
     {
         lock (this)
         {
-            if (!_isActive)
+            if (_isActive)
             {
-                return Task.Run(BeginRead, _token);
+                throw new InvalidOperationException("Already activated");
             }
-        }
+            _isActive = true;
 
-        throw new InvalidOperationException("Already activated");
+            // The poll loop blocks in srt_epoll_uwait for its whole lifetime,
+            // so it gets its own thread instead of starving the thread pool.
+            var thread = new Thread(ReadLoop)
+            {
+                IsBackground = true,
+                Name = $"srt-epoll-{_sessionEpollId}",
+            };
+            thread.Start();
+        }
     }
 
     /// <summary>
-    /// Loop for same epoll group.
+    /// Poll loop for one epoll group.
+    /// Must not throw; failures are logged and the connection is closed instead.
     /// </summary>
-    /// <remarks>
-    /// This method must not throw an exception, but instead log and close the connection.
-    /// </remarks>
-    private unsafe void BeginRead()
+    private unsafe void ReadLoop()
     {
-        if (_isActive)
+        try
         {
-            throw new InvalidOperationException("Already started.");
-        }
-
-        _isActive = true;
-
-        const int timeout = 100;
-        int maxSize = _capacity * 2;
-        var handles = stackalloc SRT_EPOLL_EVENT_STR[maxSize];
-        while (true)
-        {
-            if (_token.IsCancellationRequested) break;
-
-            if (_sessionHandles.IsEmpty)
+            const int timeout = 100;
+            int maxSize = _capacity * 2;
+            var handles = stackalloc SRT_EPOLL_EVENT_STR[maxSize];
+            while (!_token.IsCancellationRequested)
             {
-                Thread.Sleep(100);
-                continue;
-            }
-
-            int numHandles = srt_epoll_uwait(_sessionEpollId, handles, maxSize, timeout);
-            Debug.Assert(numHandles <= maxSize);
-            if (numHandles <= 0)
-            {
-                continue;
-            }
-
-            for (var i = 0; i < numHandles; i++)
-            {
-                ref SRT_EPOLL_EVENT_STR handle = ref handles[i];
-                SRTSOCKET s = handle.fd;
-                var events = (SRT_EPOLL_OPT)handle.events;
-                _logger.LogTrace("Incoming epoll event ({}): {}", s, events);
-                SRT_SOCKSTATUS status = (SRT_SOCKSTATUS)srt_getsockstate(s);
-
-                if (status is SRT_SOCKSTATUS.SRTS_BROKEN
-                    or SRT_SOCKSTATUS.SRTS_NONEXIST
-                    or SRT_SOCKSTATUS.SRTS_CLOSED)
+                if (_sessionHandles.IsEmpty)
                 {
-                    if (_sessionHandles.TryGetValue(s, out var cl))
-                    {
-                        srt_epoll_remove_usock(_sessionEpollId, s).LogIfError(_logger);
-                        srt_close(s).LogIfError(_logger);
-                        cl.MarkCompleted();
-                        ((IDictionary)_sessionHandles).Remove(s);
-                        _logger.LogDebug("Source disconnected: {}", status);
-                    }
-
+                    Thread.Sleep(100);
                     continue;
                 }
 
-                _sessionHandles[s].InternalPipe.ReadFromSRT();
+                int numHandles = srt_epoll_uwait(_sessionEpollId, handles, maxSize, timeout);
+                Debug.Assert(numHandles <= maxSize);
+                if (numHandles <= 0)
+                {
+                    continue;
+                }
+
+                for (var i = 0; i < numHandles; i++)
+                {
+                    ref SRT_EPOLL_EVENT_STR handle = ref handles[i];
+                    SRTSOCKET s = handle.fd;
+                    _logger.LogTrace("Incoming epoll event ({}): {}", s, (SRT_EPOLL_OPT)handle.events);
+
+                    if (!_sessionHandles.TryGetValue(s, out SRTClient? client))
+                    {
+                        continue;
+                    }
+
+                    var status = (SRT_SOCKSTATUS)srt_getsockstate(s);
+                    if (status is SRT_SOCKSTATUS.SRTS_BROKEN
+                        or SRT_SOCKSTATUS.SRTS_NONEXIST
+                        or SRT_SOCKSTATUS.SRTS_CLOSED)
+                    {
+                        CloseAndRemove(s, client, $"source disconnected: {status}");
+                        continue;
+                    }
+
+                    ValueTask<FlushResult> flush = client.InternalPipe.ReadFromSRT();
+                    if (flush.IsCompletedSuccessfully)
+                    {
+                        if (flush.Result.IsCompleted || flush.Result.IsCanceled)
+                        {
+                            CloseAndRemove(s, client, "downstream completed");
+                        }
+                        continue;
+                    }
+
+                    // Backpressure: the downstream has not consumed enough yet.
+                    // Stop polling this socket for input; libsrt keeps buffering
+                    // within its own receive window in the meantime.
+                    PauseReading(s);
+                    ResumeWhenFlushed(s, client, flush);
+                }
             }
         }
+        catch (Exception e)
+        {
+            _logger.LogError(e, "SRT session epoll loop crashed");
+        }
+        finally
+        {
+            Dispose();
+        }
+    }
 
-        Dispose();
+    private void ResumeWhenFlushed(SRTSOCKET s, SRTClient client, ValueTask<FlushResult> flush)
+    {
+        _ = Impl();
+        return;
+
+        async Task Impl()
+        {
+            try
+            {
+                FlushResult result = await flush.ConfigureAwait(false);
+                if (result.IsCompleted || result.IsCanceled)
+                {
+                    CloseAndRemove(s, client, "downstream completed");
+                    return;
+                }
+                ResumeReading(s);
+            }
+            catch (Exception e)
+            {
+                _logger.LogDebug("Flush failed on {}: {}", s, e.Message);
+                CloseAndRemove(s, client, "flush failed");
+            }
+        }
+    }
+
+    // srt_epoll_update_usock is safe to call from any thread; the epoll
+    // container is guarded inside libsrt.
+    private unsafe void PauseReading(SRTSOCKET s)
+    {
+        var events = (int)SRT_EPOLL_OPT.SRT_EPOLL_ERR;
+        srt_epoll_update_usock(_sessionEpollId, s, &events).LogIfError(_logger);
+    }
+
+    private unsafe void ResumeReading(SRTSOCKET s)
+    {
+        var events = (int)(SRT_EPOLL_OPT.SRT_EPOLL_IN | SRT_EPOLL_OPT.SRT_EPOLL_ERR);
+        srt_epoll_update_usock(_sessionEpollId, s, &events).LogIfError(_logger);
+    }
+
+    private void CloseAndRemove(SRTSOCKET s, SRTClient client, string reason)
+    {
+        if (!_sessionHandles.TryRemove(s, out _))
+        {
+            return; // already handled by a concurrent path
+        }
+
+        srt_epoll_remove_usock(_sessionEpollId, s).LogIfError(_logger);
+        srt_close(s).LogIfError(_logger);
+        client.InternalPipe.CompleteReceive();
+        client.MarkCompleted();
+        _logger.LogDebug("Connection removed ({}): {}", s, reason);
     }
 
     private void ReleaseUnmanagedResources()
