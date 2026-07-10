@@ -8,10 +8,6 @@ public class SRTException : InvalidOperationException
     {
     }
 
-    protected SRTException(SerializationInfo info, StreamingContext context) : base(info, context)
-    {
-    }
-
     public SRTException(string? message) : base(message)
     {
     }

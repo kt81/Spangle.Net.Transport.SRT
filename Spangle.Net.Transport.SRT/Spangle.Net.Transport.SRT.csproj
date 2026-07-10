@@ -1,32 +1,16 @@
 <Project Sdk="Microsoft.NET.Sdk">
-  <Sdk Name="SharpGenTools.Sdk" Version="2.0.0-beta.13" />
 
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <LangVersion>latest</LangVersion>
-  </PropertyGroup>
-
-  <PropertyGroup>
-    <SolutionDir>$([System.IO.Path]::GetDirectoryName($(MSBuildProjectDirectory)))\</SolutionDir>
-    <VcpkgDir>$(SolutionDir)/interop/vcpkg</VcpkgDir>
-    <ScriptExt Condition=" '$(OS)' == 'Windows_NT' ">bat</ScriptExt>
-    <ScriptExt Condition=" '$(OS)' != 'Windows_NT' ">sh</ScriptExt>
-  </PropertyGroup>
-
-  <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-  </PropertyGroup>
-
-  <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="AsyncAwaitBestPractices" Version="10.0.0" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.9" />
-    <PackageReference Include="System.IO.Pipelines" Version="10.0.9" />
     <Compile Include="../interop/dotnet/LibSRT.g.cs" />
   </ItemGroup>
 
