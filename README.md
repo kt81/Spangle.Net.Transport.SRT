@@ -20,9 +20,11 @@ Features
 - **Zero staging copies** — `srt_recvmsg` writes directly into the pipe's buffer
 - **`IDuplexPipe` surface** — consume SRT streams with the same `PipeReader` code
   you would use for any other transport
-- **Encryption-capable native** — libsrt is built with the mbedTLS crypto backend
-  (AES + PBKDF2 passphrase key derivation); surfacing the passphrase options on
-  the managed API is on the roadmap
+- **Stream ids** — the sender's `streamid` (the SRT counterpart of an RTMP stream
+  key) surfaces as `SRTClient.StreamId`, ready for routing and publish authorization
+- **Encryption** — set `SRTListenerOptions.Passphrase` and only senders presenting
+  the same passphrase can connect; payloads are AES-encrypted on the wire
+  (mbedTLS backend, PBKDF2 key derivation)
 
 Getting Started
 ---------------
@@ -35,12 +37,17 @@ dotnet add package Spangle.Net.Transport.SRT
 using System.Net;
 using Spangle.Net.Transport.SRT;
 
-var listener = new SRTListener(IPEndPoint.Parse("0.0.0.0:9998"));
+var listener = new SRTListener(IPEndPoint.Parse("0.0.0.0:9998"), new SRTListenerOptions
+{
+    Passphrase = "correct horse battery staple", // optional; 10-79 bytes
+});
 listener.Start();
 
 while (true)
 {
     SRTClient client = await listener.AcceptSRTClientAsync(ct);
+    // e.g. "srt://host:9998?streamid=live/abc" => route to stream "live/abc"
+    Console.WriteLine($"accepted: {client.StreamId}");
     _ = ConsumeAsync(client, ct);
 }
 
@@ -68,8 +75,9 @@ ffmpeg -re -f lavfi -i testsrc2 -c:v libx264 -f mpegts srt://127.0.0.1:9998
 Status
 ------
 
-Pre-1.0: the API surface is small and still evolving (listener/receive first;
-options such as passphrases and client-side connect are not exposed yet).
+Pre-1.0: the API surface is small and still evolving. Listener/receive comes
+first; client-side connect is not exposed yet (open an issue if you need it -
+it will be prioritized immediately).
 
 Native pieces
 -------------

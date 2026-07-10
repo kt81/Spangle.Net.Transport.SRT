@@ -118,6 +118,113 @@ public sealed class SRTListenerTest : IDisposable
     }
 
     /// <summary>
+    /// The sender's streamid (the SRT counterpart of an RTMP stream key) must
+    /// surface on the accepted client for routing and publish authorization.
+    /// </summary>
+    [Fact]
+    public async Task TestStreamIdIsExposedOnAcceptedClient()
+    {
+        var ep = IPEndPoint.Parse("0.0.0.0:9995");
+        using var listener = new SRTListener(ep, _logger);
+        listener.Start();
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+        ValueTask<SRTClient> acceptTask = listener.AcceptSRTClientAsync(cts.Token);
+
+        const string streamId = "#!::r=live/sparkle,m=publish";
+        int sock = ConnectWithStreamId(streamId);
+        try
+        {
+            using var client = await acceptTask;
+            Assert.Equal(streamId, client.StreamId);
+        }
+        finally
+        {
+            LibSRT.srt_close(sock);
+        }
+
+        static unsafe int ConnectWithStreamId(string streamId)
+        {
+            int addrSize = Marshal.SizeOf<sockaddr>();
+            int sock = LibSRT.srt_create_socket().ThrowIfError();
+            byte[] sid = Encoding.UTF8.GetBytes(streamId);
+            fixed (byte* p = sid)
+            {
+                LibSRT.srt_setsockflag(sock, (int)LibSRT.SRT_SOCKOPT.SRTO_STREAMID, p, sid.Length)
+                    .ThrowIfError();
+            }
+            var sa = new LibSRT.sockaddr_in();
+            sockaddr* psa = LibSRT.WriteSockaddrIn(IPEndPoint.Parse("127.0.0.1:9995"), &sa, addrSize);
+            LibSRT.srt_connect(sock, psa, addrSize).ThrowIfError();
+            return sock;
+        }
+    }
+
+    /// <summary>
+    /// A listener-level passphrase must gate connections: a matching sender gets
+    /// through and its data flows, a mismatching sender is rejected in handshake.
+    /// </summary>
+    [Fact]
+    public async Task TestListenerPassphrase()
+    {
+        const string passphrase = "spangle-secret-passphrase";
+        var ep = IPEndPoint.Parse("0.0.0.0:9994");
+        using var listener = new SRTListener(ep, new SRTListenerOptions { Passphrase = passphrase }, _logger);
+        listener.Start();
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+
+        // wrong passphrase: the key material exchange fails and connect is rejected
+        Assert.Throws<SRTException>(() => Connect("wrong-passphrase-here", null));
+
+        // right passphrase: connects, and the decrypted payload arrives intact
+        ValueTask<SRTClient> acceptTask = listener.AcceptSRTClientAsync(cts.Token);
+        byte[] payload = Encoding.ASCII.GetBytes("hello-encrypted-spangle");
+        int sock = Connect(passphrase, payload);
+        try
+        {
+            using var client = await acceptTask;
+            var result = await client.Pipe.Input.ReadAsync(cts.Token);
+            Assert.Equal(payload, result.Buffer.ToArray());
+            client.Pipe.Input.AdvanceTo(result.Buffer.End);
+        }
+        finally
+        {
+            LibSRT.srt_close(sock);
+        }
+
+        static unsafe int Connect(string pass, byte[]? payload)
+        {
+            int addrSize = Marshal.SizeOf<sockaddr>();
+            int sock = LibSRT.srt_create_socket().ThrowIfError();
+            byte[] pp = Encoding.UTF8.GetBytes(pass);
+            fixed (byte* p = pp)
+            {
+                LibSRT.srt_setsockopt(sock, 0, (int)LibSRT.SRT_SOCKOPT.SRTO_PASSPHRASE, p, pp.Length)
+                    .ThrowIfError();
+            }
+            var sa = new LibSRT.sockaddr_in();
+            sockaddr* psa = LibSRT.WriteSockaddrIn(IPEndPoint.Parse("127.0.0.1:9994"), &sa, addrSize);
+            try
+            {
+                LibSRT.srt_connect(sock, psa, addrSize).ThrowIfError();
+            }
+            catch
+            {
+                LibSRT.srt_close(sock);
+                throw;
+            }
+
+            if (payload is not null)
+            {
+                fixed (byte* pl = payload)
+                {
+                    LibSRT.srt_send(sock, pl, payload.Length).ThrowIfError();
+                }
+            }
+            return sock;
+        }
+    }
+
+    /// <summary>
     /// Loopback through libsrt itself - no external tools, so it runs on lanes
     /// whose ffmpeg lacks the SRT protocol (Homebrew) or has no ffmpeg at all.
     /// Exercises the full path: bind/listen/accept, connect, send, pipe delivery.

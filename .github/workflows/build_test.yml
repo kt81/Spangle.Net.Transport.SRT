@@ -87,7 +87,7 @@ jobs:
 
       - name: Test (native loopback, no external tools)
         if: ${{ !matrix.fullTests }}
-        run: dotnet test --no-build --configuration Release -p:InteropTargetDir=../interop/target/release --filter "TestNativeLibraryVersion|TestNativeClientLoopback|TestEncryptedNativeLoopback" --logger "console;verbosity=detailed"
+        run: dotnet test --no-build --configuration Release -p:InteropTargetDir=../interop/target/release --filter "TestNativeLibraryVersion|TestNativeClientLoopback|TestEncryptedNativeLoopback|TestStreamId|TestListenerPassphrase" --logger "console;verbosity=detailed"
 
       - name: Collect native artifact
         shell: bash

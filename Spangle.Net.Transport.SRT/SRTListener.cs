@@ -48,10 +48,18 @@ public sealed class SRTListener : IDisposable
         }
     }
 
+    private readonly SRTListenerOptions? _options;
+
     public SRTListener(IPEndPoint localEP, ILogger? logger = null)
+        : this(localEP, null, logger)
+    {
+    }
+
+    public SRTListener(IPEndPoint localEP, SRTListenerOptions? options, ILogger? logger = null)
     {
         ArgumentNullException.ThrowIfNull(localEP);
         _serverSocketEP = localEP;
+        _options = options;
         _logger = logger ?? new NullLogger<SRTListener>();
         _cts = new CancellationTokenSource();
         _acceptQueue = Channel.CreateBounded<(SRTSOCKET, IPEndPoint)>(new BoundedChannelOptions(AcceptQueueCapacity)
@@ -94,6 +102,17 @@ public sealed class SRTListener : IDisposable
 
         var falsy = 0;
         srt_setsockopt(_listenHandle, 0, (int)SRT_SOCKOPT.SRTO_RCVSYN, &falsy, sizeof(int)).ThrowIfError();
+
+        if (_options?.Passphrase is { } passphrase)
+        {
+            // accepted sockets inherit the listener's passphrase
+            byte[] passBytes = System.Text.Encoding.UTF8.GetBytes(passphrase);
+            fixed (byte* pp = passBytes)
+            {
+                srt_setsockopt(_listenHandle, 0, (int)SRT_SOCKOPT.SRTO_PASSPHRASE, pp, passBytes.Length)
+                    .ThrowIfError();
+            }
+        }
 
         var sockAddrIn = new sockaddr_in();
         var sin = WriteSockaddrIn(_serverSocketEP, &sockAddrIn, s_socketAddressSize);
