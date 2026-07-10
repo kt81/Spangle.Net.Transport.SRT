@@ -36,6 +36,15 @@ public sealed class SRTListenerTest : IDisposable
     }
 
     [Fact]
+    public void TestNativeLibraryVersion()
+    {
+        uint v = LibSRT.srt_getversion();
+        var version = new Version((int)(v >> 16) & 0xFF, (int)(v >> 8) & 0xFF, (int)v & 0xFF);
+        s_testOutputHelper!.WriteLine($"libsrt {version}");
+        Assert.True(version >= new Version(1, 5, 5), $"expected libsrt >= 1.5.5, got {version}");
+    }
+
+    [Fact]
     public async Task TestListen()
     {
         const int numConnections = 21;

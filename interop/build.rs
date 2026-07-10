@@ -69,7 +69,11 @@ fn main() {
     );
 
     // Build BoringSSL
+    // Native deps are always built Release: a cargo debug profile would select the
+    // debug CRT (/MDd) whose symbols (e.g. __imp__invalid_parameter) the Rust
+    // linker never provides - rustc always links the release CRT.
     let ssl_dst = cmake::Config::new("deps/boringssl")
+        .profile("Release")
         .define("CMAKE_C_FLAGS", cmake_cxx_flags)
         .define("CMAKE_CXX_FLAGS", cmake_cxx_flags)
         .define("BUILD_SHARED_LIBS", "FALSE")
@@ -81,6 +85,7 @@ fn main() {
 
     let dst = cmake::Config::new("deps/srt")
         // .very_verbose(true)
+        .profile("Release")
         .define("CMAKE_C_FLAGS", cmake_cxx_flags)
         .define("CMAKE_CXX_FLAGS", cmake_cxx_flags)
         .define("ENABLE_STATIC", "ON")
