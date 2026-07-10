@@ -17,12 +17,14 @@ jobs:
         # fullTests lanes run the live ffmpeg loopback tests; win-arm64 only
         # verifies that the native library loads (no reliable ffmpeg there) and
         # builds BoringSSL without asm (no arm64 assembler on the MSVC lane).
+        # osx-x64 is deliberately unsupported: Intel Macs ended with macOS 26
+        # and shipping the RID once would turn dropping it into a breaking
+        # change, while adding it later stays purely additive.
         include:
           - { os: windows-2025,     rid: win-x64,     fullTests: true }
           - { os: windows-11-arm,   rid: win-arm64,   fullTests: false, noAsm: true }
           - { os: ubuntu-24.04,     rid: linux-x64,   fullTests: true }
           - { os: ubuntu-24.04-arm, rid: linux-arm64, fullTests: true }
-          - { os: macos-15-intel,   rid: osx-x64,     fullTests: true }
           - { os: macos-15,         rid: osx-arm64,   fullTests: true }
     steps:
       - uses: actions/checkout@v4

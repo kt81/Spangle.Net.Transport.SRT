@@ -27,7 +27,7 @@
   <ItemGroup>
     <!-- srt_interop.dll on Windows, libsrt_interop.so / .dylib elsewhere.
          Forward slashes only: backslash globs do not expand on Unix MSBuild. -->
-    <Content Include="$(InteropTargetDir)/*srt_interop*" Exclude="$(InteropTargetDir)/*.lib;$(InteropTargetDir)/*.exp;$(InteropTargetDir)/*.d">
+    <Content Include="$(InteropTargetDir)/*srt_interop*" Exclude="$(InteropTargetDir)/*.lib;$(InteropTargetDir)/*.exp;$(InteropTargetDir)/*.d;$(InteropTargetDir)/*.rlib">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
