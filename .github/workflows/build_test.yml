@@ -6,6 +6,12 @@ on:
   pull_request:
     branches: [ "main" ]
 
+# A newer push supersedes the running build: minutes are free on public repos,
+# but concurrency slots are not (20 jobs total, 5 for macOS on the free plan)
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     name: ${{ matrix.rid }}
