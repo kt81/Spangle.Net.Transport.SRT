@@ -78,6 +78,8 @@ fn main() {
         .define("CMAKE_C_FLAGS", cmake_cxx_flags)
         .define("CMAKE_CXX_FLAGS", cmake_cxx_flags)
         .define("BUILD_SHARED_LIBS", "FALSE")
+        // the static objects end up inside our cdylib, so they must be PIC
+        .define("CMAKE_POSITION_INDEPENDENT_CODE", "ON")
         .generator("Ninja");
     // Opt-out for targets whose assembler toolchain is unavailable (e.g. win-arm64
     // on CI); costs crypto throughput, never correctness.
@@ -95,6 +97,12 @@ fn main() {
         .define("CMAKE_C_FLAGS", cmake_cxx_flags)
         .define("CMAKE_CXX_FLAGS", cmake_cxx_flags)
         .define("ENABLE_STATIC", "ON")
+        // static only: with both libsrt.a and libsrt.so/.dylib present, the
+        // Unix linkers prefer the shared one and the resulting cdylib ends up
+        // with a runtime dependency on a build-directory path
+        .define("ENABLE_SHARED", "OFF")
+        .define("ENABLE_APPS", "OFF")
+        .define("CMAKE_POSITION_INDEPENDENT_CODE", "ON")
         .define("ENABLE_STDCXX_SYNC", "ON")
         .define("OPENSSL_USE_STATIC_LIBS", "ON")
         .define("OPENSSL_ROOT_DIR", ssl_dst)
