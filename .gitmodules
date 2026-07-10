@@ -1,6 +1,6 @@
 [submodule "interop/srt"]
 	path = interop/deps/srt
 	url = https://github.com/Haivision/srt.git
-[submodule "interop/deps/boringssl"]
-	path = interop/deps/boringssl
-	url = https://github.com/google/boringssl.git
+[submodule "interop/deps/mbedtls"]
+	path = interop/deps/mbedtls
+	url = https://github.com/Mbed-TLS/mbedtls.git

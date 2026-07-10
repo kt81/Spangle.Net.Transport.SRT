@@ -45,6 +45,79 @@ public sealed class SRTListenerTest : IDisposable
     }
 
     /// <summary>
+    /// Drives the crypto backend (mbedTLS) end to end: both sides set
+    /// SRTO_PASSPHRASE, so the handshake derives AES key material (PBKDF2) and
+    /// the payload is encrypted on the wire. No external tools involved.
+    /// </summary>
+    [Fact]
+    public void TestEncryptedNativeLoopback()
+    {
+        unsafe
+        {
+            byte[] payload = Encoding.ASCII.GetBytes("spangle-encrypted-loopback");
+            byte[] passphrase = Encoding.UTF8.GetBytes("spangle-test-passphrase");
+            int addrSize = Marshal.SizeOf<sockaddr>();
+
+            int lis = LibSRT.srt_create_socket().ThrowIfError();
+            int cli = LibSRT.srt_create_socket().ThrowIfError();
+            int peer = LibSRT.SRT_INVALID_SOCK;
+            try
+            {
+                fixed (byte* pp = passphrase)
+                {
+                    // the accepted socket inherits the listener's passphrase
+                    LibSRT.srt_setsockopt(lis, 0, (int)LibSRT.SRT_SOCKOPT.SRTO_PASSPHRASE, pp, passphrase.Length)
+                        .ThrowIfError();
+                    LibSRT.srt_setsockopt(cli, 0, (int)LibSRT.SRT_SOCKOPT.SRTO_PASSPHRASE, pp, passphrase.Length)
+                        .ThrowIfError();
+                }
+
+                var sa = new LibSRT.sockaddr_in();
+                sockaddr* psa = LibSRT.WriteSockaddrIn(IPEndPoint.Parse("127.0.0.1:9996"), &sa, addrSize);
+                LibSRT.srt_bind(lis, psa, addrSize).ThrowIfError();
+                LibSRT.srt_listen(lis, 1).ThrowIfError();
+
+                // libsrt completes handshakes on its own threads without an
+                // application-level accept, so connect-then-accept cannot deadlock
+                var ca = new LibSRT.sockaddr_in();
+                sockaddr* pca = LibSRT.WriteSockaddrIn(IPEndPoint.Parse("127.0.0.1:9996"), &ca, addrSize);
+                LibSRT.srt_connect(cli, pca, addrSize).ThrowIfError();
+
+                var peerAddr = new LibSRT.sockaddr_in();
+                int peerLen = addrSize;
+                peer = LibSRT.srt_accept(lis, (sockaddr*)&peerAddr, &peerLen).ThrowIfError();
+
+                int timeoutMs = 10_000;
+                LibSRT.srt_setsockopt(peer, 0, (int)LibSRT.SRT_SOCKOPT.SRTO_RCVTIMEO, &timeoutMs, sizeof(int))
+                    .ThrowIfError();
+
+                fixed (byte* p = payload)
+                {
+                    LibSRT.srt_send(cli, p, payload.Length).ThrowIfError();
+                }
+
+                var buff = new byte[1500];
+                int received;
+                fixed (byte* pb = buff)
+                {
+                    received = LibSRT.srt_recvmsg(peer, pb, buff.Length).ThrowIfError();
+                }
+
+                Assert.Equal(payload, buff.AsSpan(0, received).ToArray());
+            }
+            finally
+            {
+                if (peer != LibSRT.SRT_INVALID_SOCK)
+                {
+                    LibSRT.srt_close(peer);
+                }
+                LibSRT.srt_close(cli);
+                LibSRT.srt_close(lis);
+            }
+        }
+    }
+
+    /// <summary>
     /// Loopback through libsrt itself - no external tools, so it runs on lanes
     /// whose ffmpeg lacks the SRT protocol (Homebrew) or has no ffmpeg at all.
     /// Exercises the full path: bind/listen/accept, connect, send, pipe delivery.

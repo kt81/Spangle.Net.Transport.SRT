@@ -21,16 +21,16 @@ jobs:
       matrix:
         # Every RID builds on a native runner: no cross toolchains.
         # fullTests lanes additionally run the live ffmpeg loopback tests;
-        # the others run the native libsrt loopback + version tests, because
-        # no SRT-capable ffmpeg is available there (Homebrew ffmpeg has no
-        # srt protocol; no reliable ffmpeg on win-arm64, which also builds
-        # BoringSSL without asm - no arm64 assembler on the MSVC lane).
+        # the others run the native libsrt loopback (plain + encrypted) and
+        # version tests, because no SRT-capable ffmpeg is available there
+        # (Homebrew ffmpeg has no srt protocol; no reliable ffmpeg on
+        # win-arm64).
         # osx-x64 is deliberately unsupported: Intel Macs ended with macOS 26
         # and shipping the RID once would turn dropping it into a breaking
         # change, while adding it later stays purely additive.
         include:
           - { os: windows-2025,     rid: win-x64,     fullTests: true }
-          - { os: windows-11-arm,   rid: win-arm64,   fullTests: false, noAsm: true }
+          - { os: windows-11-arm,   rid: win-arm64,   fullTests: false }
           - { os: ubuntu-24.04,     rid: linux-x64,   fullTests: true }
           - { os: ubuntu-24.04-arm, rid: linux-arm64, fullTests: true }
           - { os: macos-15,         rid: osx-arm64,   fullTests: false }
@@ -51,21 +51,12 @@ jobs:
         if: runner.os == 'Windows'
         run: choco install ninja -y
 
-      - name: Install NASM (Windows x64)
-        if: matrix.rid == 'win-x64'
-        shell: pwsh
-        run: |
-          choco install nasm -y
-          Add-Content -Path $env:GITHUB_PATH -Value "C:\Program Files\NASM"
-
       - name: Install ffmpeg (Windows x64)
         if: matrix.rid == 'win-x64'
         run: choco install ffmpeg -y
 
       - name: Build native interop
         working-directory: interop
-        env:
-          SRT_INTEROP_NO_ASM: ${{ matrix.noAsm && '1' || '' }}
         run: cargo build --release
 
       - name: Setup .NET
@@ -93,7 +84,7 @@ jobs:
 
       - name: Test (native loopback, no external tools)
         if: ${{ !matrix.fullTests }}
-        run: dotnet test --no-build --configuration Release -p:InteropTargetDir=../interop/target/release --filter "TestNativeLibraryVersion|TestNativeClientLoopback" --logger "console;verbosity=detailed"
+        run: dotnet test --no-build --configuration Release -p:InteropTargetDir=../interop/target/release --filter "TestNativeLibraryVersion|TestNativeClientLoopback|TestEncryptedNativeLoopback" --logger "console;verbosity=detailed"
 
       - name: Collect native artifact
         shell: bash

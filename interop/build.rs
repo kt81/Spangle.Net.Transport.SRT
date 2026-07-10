@@ -36,20 +36,19 @@ fn main() {
     };
 
     let _triplet: String;
-    let stlib_ext: &str;
     let cmake_cxx_flags: &str;
 
     if target_os == "windows" {
         _triplet = format!("{}-windows-static-md", arch);
-        stlib_ext = ".lib";
+
         cmake_cxx_flags = "/EHsc /utf-8 -DWIN32_LEAN_AND_MEAN";
     } else if target_os == "linux" {
         _triplet = format!("{}-linux", arch);
-        stlib_ext = ".a";
+
         cmake_cxx_flags = "";
     } else if target_os == "macos" {
         _triplet = format!("{}-osx", arch);
-        stlib_ext = ".a";
+
         cmake_cxx_flags = "";
     } else {
         panic!("unsupported target os: {}", target_os)
@@ -68,28 +67,22 @@ fn main() {
         .collect(),
     );
 
-    // Build BoringSSL
+    // Build mbedTLS as the crypto backend for libsrt's haicrypt.
+    // 3.6 LTS on purpose: libsrt's cryspr uses the classic mbedtls/aes.h, md.h,
+    // pkcs5.h APIs, which mbedTLS 4.x removed in the PSA Crypto transition.
     // Native deps are always built Release: a cargo debug profile would select the
     // debug CRT (/MDd) whose symbols (e.g. __imp__invalid_parameter) the Rust
     // linker never provides - rustc always links the release CRT.
-    let mut ssl_config = cmake::Config::new("deps/boringssl");
-    ssl_config
+    let tls_dst = cmake::Config::new("deps/mbedtls")
         .profile("Release")
         .define("CMAKE_C_FLAGS", cmake_cxx_flags)
         .define("CMAKE_CXX_FLAGS", cmake_cxx_flags)
-        .define("BUILD_SHARED_LIBS", "FALSE")
+        .define("ENABLE_PROGRAMS", "OFF")
+        .define("ENABLE_TESTING", "OFF")
         // the static objects end up inside our cdylib, so they must be PIC
         .define("CMAKE_POSITION_INDEPENDENT_CODE", "ON")
-        .generator("Ninja");
-    // Opt-out for targets whose assembler toolchain is unavailable (e.g. win-arm64
-    // on CI); costs crypto throughput, never correctness.
-    if env::var("SRT_INTEROP_NO_ASM").map(|v| !v.is_empty()).unwrap_or(false) {
-        ssl_config.define("OPENSSL_NO_ASM", "1");
-    }
-    let ssl_dst = ssl_config.build();
-
-    // let ssl_include = ssl_dst.clone().join("include");
-    let ssl_crypto_lib = ssl_dst.clone().join(format!("lib/crypto{}", stlib_ext));
+        .generator("Ninja")
+        .build();
 
     let dst = cmake::Config::new("deps/srt")
         // .very_verbose(true)
@@ -104,27 +97,40 @@ fn main() {
         .define("ENABLE_APPS", "OFF")
         .define("CMAKE_POSITION_INDEPENDENT_CODE", "ON")
         .define("ENABLE_STDCXX_SYNC", "ON")
-        .define("OPENSSL_USE_STATIC_LIBS", "ON")
-        .define("OPENSSL_ROOT_DIR", ssl_dst)
-        // .define("OPENSSL_INCLUDE_DIR", ssl_include)
-        .define("OPENSSL_CRYPTO_LIBRARY", ssl_crypto_lib)
+        .define("USE_ENCLIB", "mbedtls")
+        // setting these explicitly bypasses libsrt's find_package(MbedTLS);
+        // on Windows libsrt appends bcrypt by itself
+        .define("SSL_INCLUDE_DIRS", tls_dst.join("include"))
+        .define("SSL_LIBRARY_DIRS", tls_dst.join("lib"))
+        .define("SSL_LIBRARIES", "mbedtls;mbedcrypto")
         .generator("Ninja")
         .build();
+
+    println!(
+        "cargo:rustc-link-search=native={}",
+        tls_dst.join("lib").display()
+    );
 
     let mut lib_path = dst.clone();
     lib_path.push("lib");
     println!("cargo:rustc-link-search=native={}", lib_path.display());
 
-    // Order matters on Unix: static archives are scanned once, so the dependent
-    // (srt) must come before its dependency (crypto), or the linker discards the
-    // EVP_* symbols and the .so dlopens with unresolved symbols.
+    // Order matters on Unix: static archives are scanned once, so dependents
+    // must precede their dependencies (srt -> mbedtls -> mbedx509 -> mbedcrypto),
+    // or the linker discards symbols before they are asked for and the .so
+    // dlopens with unresolved symbols.
     if target_os == "windows" {
         println!("cargo:rustc-link-lib=static=srt_static");
     } else {
         println!("cargo:rustc-link-lib=static=srt");
     }
-    println!("cargo:rustc-link-lib=static=crypto");
-    if target_os == "macos" {
+    println!("cargo:rustc-link-lib=static=mbedtls");
+    println!("cargo:rustc-link-lib=static=mbedx509");
+    println!("cargo:rustc-link-lib=static=mbedcrypto");
+    if target_os == "windows" {
+        // mbedTLS entropy uses BCryptGenRandom
+        println!("cargo:rustc-link-lib=dylib=bcrypt");
+    } else if target_os == "macos" {
         println!("cargo:rustc-link-lib=dylib=c++");
     } else if target_os == "linux" {
         println!("cargo:rustc-link-lib=dylib=stdc++");
