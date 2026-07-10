@@ -18,8 +18,15 @@
     <InternalsVisibleTo Include="Spangle.Net.Transport.SRT.Tests" />
   </ItemGroup>
 
+  <PropertyGroup>
+    <!-- Where the native interop library is picked up from; CI overrides this
+         with -p:InteropTargetDir=../interop/target/release -->
+    <InteropTargetDir Condition=" '$(InteropTargetDir)' == '' ">..\interop\target\debug</InteropTargetDir>
+  </PropertyGroup>
+
   <ItemGroup>
-    <Content Include="..\interop\target\debug\srt_interop.*" Exclude="**\*.lib;**\*.exp">
+    <!-- srt_interop.dll on Windows, libsrt_interop.so / .dylib elsewhere -->
+    <Content Include="$(InteropTargetDir)\*srt_interop*" Exclude="**\*.lib;**\*.exp;**\*.d">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>

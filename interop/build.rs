@@ -35,20 +35,20 @@ fn main() {
         _ => panic!("unsupported: {}", target_arch),
     };
 
-    let triplet: String;
+    let _triplet: String;
     let stlib_ext: &str;
     let cmake_cxx_flags: &str;
 
     if target_os == "windows" {
-        triplet = format!("{}-windows-static-md", arch);
+        _triplet = format!("{}-windows-static-md", arch);
         stlib_ext = ".lib";
         cmake_cxx_flags = "/EHsc /utf-8 -DWIN32_LEAN_AND_MEAN";
     } else if target_os == "linux" {
-        triplet = format!("{}-linux", arch);
+        _triplet = format!("{}-linux", arch);
         stlib_ext = ".a";
         cmake_cxx_flags = "";
-    } else if target_os == "macos//-is-not-tested!!!!!!" {
-        triplet = format!("{}-osx", arch);
+    } else if target_os == "macos" {
+        _triplet = format!("{}-osx", arch);
         stlib_ext = ".a";
         cmake_cxx_flags = "";
     } else {
@@ -72,13 +72,19 @@ fn main() {
     // Native deps are always built Release: a cargo debug profile would select the
     // debug CRT (/MDd) whose symbols (e.g. __imp__invalid_parameter) the Rust
     // linker never provides - rustc always links the release CRT.
-    let ssl_dst = cmake::Config::new("deps/boringssl")
+    let mut ssl_config = cmake::Config::new("deps/boringssl");
+    ssl_config
         .profile("Release")
         .define("CMAKE_C_FLAGS", cmake_cxx_flags)
         .define("CMAKE_CXX_FLAGS", cmake_cxx_flags)
         .define("BUILD_SHARED_LIBS", "FALSE")
-        .generator("Ninja")
-        .build();
+        .generator("Ninja");
+    // Opt-out for targets whose assembler toolchain is unavailable (e.g. win-arm64
+    // on CI); costs crypto throughput, never correctness.
+    if env::var("SRT_INTEROP_NO_ASM").map(|v| !v.is_empty()).unwrap_or(false) {
+        ssl_config.define("OPENSSL_NO_ASM", "1");
+    }
+    let ssl_dst = ssl_config.build();
 
     // let ssl_include = ssl_dst.clone().join("include");
     let ssl_crypto_lib = ssl_dst.clone().join(format!("lib/crypto{}", stlib_ext));
@@ -100,16 +106,13 @@ fn main() {
     let mut lib_path = dst.clone();
     lib_path.push("lib");
     println!("cargo:rustc-link-search=native={}", lib_path.display());
-    println!(
-        "cargo:rustc-link-search=native=vcpkg/installed/{}/lib",
-        triplet
-    );
 
     println!("cargo:rustc-link-lib=static=crypto");
     if target_os == "windows" {
-        // println!("cargo:rustc-link-lib=dylib=user32");
-        // println!("cargo:rustc-link-lib=dylib=crypt32");
         println!("cargo:rustc-link-lib=static=srt_static");
+    } else if target_os == "macos" {
+        println!("cargo:rustc-link-lib=dylib=c++");
+        println!("cargo:rustc-link-lib=static=srt");
     } else {
         println!("cargo:rustc-link-lib=dylib=stdc++");
         println!("cargo:rustc-link-lib=static=srt");

@@ -1,0 +1,94 @@
+name: Build and Test
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    name: ${{ matrix.rid }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # Every RID builds on a native runner: no cross toolchains.
+        # fullTests lanes run the live ffmpeg loopback tests; win-arm64 only
+        # verifies that the native library loads (no reliable ffmpeg there) and
+        # builds BoringSSL without asm (no arm64 assembler on the MSVC lane).
+        include:
+          - { os: windows-2025,     rid: win-x64,     fullTests: true }
+          - { os: windows-11-arm,   rid: win-arm64,   fullTests: false, noAsm: true }
+          - { os: ubuntu-24.04,     rid: linux-x64,   fullTests: true }
+          - { os: ubuntu-24.04-arm, rid: linux-arm64, fullTests: true }
+          - { os: macos-15-intel,   rid: osx-x64,     fullTests: true }
+          - { os: macos-15,         rid: osx-arm64,   fullTests: true }
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Install build tools (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y ninja-build libclang-dev ffmpeg
+
+      - name: Install build tools (macOS)
+        if: runner.os == 'macOS'
+        run: brew install ninja ffmpeg
+
+      - name: Install build tools (Windows)
+        if: runner.os == 'Windows'
+        run: choco install ninja -y
+
+      - name: Install NASM (Windows x64)
+        if: matrix.rid == 'win-x64'
+        shell: pwsh
+        run: |
+          choco install nasm -y
+          Add-Content -Path $env:GITHUB_PATH -Value "C:\Program Files\NASM"
+
+      - name: Install ffmpeg (Windows x64)
+        if: matrix.rid == 'win-x64'
+        run: choco install ffmpeg -y
+
+      - name: Build native interop
+        working-directory: interop
+        env:
+          SRT_INTEROP_NO_ASM: ${{ matrix.noAsm && '1' || '' }}
+        run: cargo build --release
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Test (live ffmpeg loopback)
+        if: ${{ matrix.fullTests }}
+        run: dotnet test --configuration Release -p:InteropTargetDir=../interop/target/release --logger "console;verbosity=detailed"
+
+      - name: Test (native library load only)
+        if: ${{ !matrix.fullTests }}
+        run: dotnet test --configuration Release -p:InteropTargetDir=../interop/target/release --filter TestNativeLibraryVersion
+
+      - name: Collect native artifact
+        shell: bash
+        run: |
+          dest="artifact/runtimes/${{ matrix.rid }}/native"
+          mkdir -p "$dest"
+          for f in interop/target/release/srt_interop.dll \
+                   interop/target/release/libsrt_interop.so \
+                   interop/target/release/libsrt_interop.dylib; do
+            [ -f "$f" ] && cp "$f" "$dest/"
+          done
+          ls -la "$dest"
+          # fail loudly if nothing was produced
+          [ -n "$(ls -A "$dest")" ]
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: native-${{ matrix.rid }}
+          path: artifact/
+          if-no-files-found: error
