@@ -1,0 +1,60 @@
+name: Publish to NuGet
+
+# Bare version tags (e.g. 0.1.0) publish that version via Trusted Publishing:
+# the GitHub OIDC token is exchanged for a short-lived API key, so no
+# long-lived secret is stored anywhere. The nuget.org trusted publishing
+# policy is bound to this workflow file (publish.yml).
+on:
+  push:
+    tags: [ "[0-9]*.*.*" ]
+
+jobs:
+  # Rebuild and test the native library on every RID lane first
+  natives:
+    uses: ./.github/workflows/build_test.yml
+
+  publish:
+    needs: natives
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write # for the GitHub OIDC token consumed by NuGet/login
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Download native artifacts
+        uses: actions/download-artifact@v8
+        with:
+          pattern: native-*
+          merge-multiple: true
+          path: native
+
+      - name: Verify every RID is present
+        run: |
+          find native -type f | sort
+          count=$(find native/runtimes -type f | wc -l)
+          if [ "$count" -ne 5 ]; then
+            echo "expected 5 native libraries, got $count"
+            exit 1
+          fi
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Pack
+        # snupkg symbols come from the csproj (IncludeSymbols/SymbolPackageFormat)
+        run: dotnet pack Spangle.Net.Transport.SRT/Spangle.Net.Transport.SRT.csproj --configuration Release -p:Version=${GITHUB_REF_NAME} -p:ContinuousIntegrationBuild=true -p:NativeRuntimesDir=${GITHUB_WORKSPACE}/native/runtimes -o out
+
+      - name: Show package contents
+        run: unzip -l out/*.nupkg | grep -E 'runtimes/|README|NOTICES|icon|lib/'
+
+      - name: NuGet login (OIDC -> short-lived API key)
+        uses: NuGet/login@v1
+        id: login
+        with:
+          user: kt81
+
+      - name: Publish to NuGet
+        run: dotnet nuget push out/*.nupkg -s https://api.nuget.org/v3/index.json -k "${{ steps.login.outputs.NUGET_API_KEY }}" --skip-duplicate

@@ -1,0 +1,37 @@
+THIRD-PARTY SOFTWARE NOTICES
+============================
+
+This package distributes a native library (srt_interop) that statically links
+the following third-party software. The corresponding source code of each
+component, at exactly the version used, is available at the URLs below.
+
+--------------------------------------------------------------------------
+SRT (Secure Reliable Transport) - libsrt
+--------------------------------------------------------------------------
+Copyright (c) Haivision Systems Inc.
+
+Licensed under the Mozilla Public License Version 2.0 (MPL-2.0).
+License text: https://www.mozilla.org/en-US/MPL/2.0/
+
+The libsrt sources are used UNMODIFIED. Source Code Form of the exact
+version linked into this package:
+  https://github.com/Haivision/srt
+  (see the package release notes for the pinned tag, e.g. v1.5.5)
+
+Per MPL-2.0 Section 3.3, this package as a whole (the "Larger Work") is
+distributed under the MIT license; the MPL-2.0 continues to apply to the
+libsrt files themselves.
+
+--------------------------------------------------------------------------
+Mbed TLS
+--------------------------------------------------------------------------
+Copyright The Mbed TLS Contributors
+
+Mbed TLS is distributed under a dual license; this package uses it under
+the Apache License, Version 2.0.
+License text: https://www.apache.org/licenses/LICENSE-2.0
+
+The Mbed TLS sources are used UNMODIFIED. Source Code Form of the exact
+version linked into this package:
+  https://github.com/Mbed-TLS/mbedtls
+  (see the package release notes for the pinned tag, e.g. v3.6.7)

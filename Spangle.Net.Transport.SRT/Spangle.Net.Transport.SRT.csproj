@@ -8,6 +8,33 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
+  <PropertyGroup>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <PackageId>Spangle.Net.Transport.SRT</PackageId>
+    <VersionPrefix>0.1.0</VersionPrefix>
+    <Title>Spangle.Net.Transport.SRT - self-contained SRT transport for .NET</Title>
+    <Authors>Toshio Kumaki</Authors>
+    <Copyright>Copyright (c) Toshio Kumaki</Copyright>
+    <Description>SRT (Secure Reliable Transport) listener and duplex-pipe transport for .NET, built on System.IO.Pipelines. Truly asynchronous accept, backpressure-aware receive driven by srt_epoll, and zero staging copies straight into pipe buffers. Fully self-contained: the native libsrt, statically linked with the mbedTLS crypto backend, ships inside the package for win-x64/arm64, linux-x64/arm64 and osx-arm64 - nothing to install. Ideal for ingesting live MPEG-TS streams.</Description>
+    <PackageTags>srt;secure-reliable-transport;streaming;live-streaming;video;low-latency;transport;udp;pipelines;system-io-pipelines;libsrt;haivision;mpeg-ts;ingest;native;self-contained</PackageTags>
+
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageIcon>icon.png</PackageIcon>
+    <PackageProjectUrl>https://github.com/kt81/Spangle.Net.Transport.SRT</PackageProjectUrl>
+    <PackageReleaseNotes>https://github.com/kt81/Spangle.Net.Transport.SRT/releases</PackageReleaseNotes>
+    <RepositoryUrl>https://github.com/kt81/Spangle.Net.Transport.SRT.git</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+
+    <!-- Source Link: debuggable, verifiable sources -->
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+  </PropertyGroup>
+
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.9" />
     <Compile Include="../interop/dotnet/LibSRT.g.cs" />
@@ -18,18 +45,32 @@
     <InternalsVisibleTo Include="Spangle.Net.Transport.SRT.Tests" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Include="../README.md" Pack="true" PackagePath="/" />
+    <None Include="../THIRD-PARTY-NOTICES.txt" Pack="true" PackagePath="/" />
+    <None Include="../assets/icon.png" Pack="true" PackagePath="/" />
+  </ItemGroup>
+
   <PropertyGroup>
-    <!-- Where the native interop library is picked up from; CI overrides this
-         with -p:InteropTargetDir=../interop/target/release -->
+    <!-- Where the native interop library is picked up from for local runs and
+         tests; CI overrides this with -p:InteropTargetDir=../interop/target/release -->
     <InteropTargetDir Condition=" '$(InteropTargetDir)' == '' ">../interop/target/debug</InteropTargetDir>
   </PropertyGroup>
 
   <ItemGroup>
     <!-- srt_interop.dll on Windows, libsrt_interop.so / .dylib elsewhere.
-         Forward slashes only: backslash globs do not expand on Unix MSBuild. -->
-    <Content Include="$(InteropTargetDir)/*srt_interop*" Exclude="$(InteropTargetDir)/*.lib;$(InteropTargetDir)/*.exp;$(InteropTargetDir)/*.d;$(InteropTargetDir)/*.rlib">
+         Forward slashes only: backslash globs do not expand on Unix MSBuild.
+         Pack="false": the packaged natives come from NativeRuntimesDir below,
+         not from this dev-convenience copy. -->
+    <Content Include="$(InteropTargetDir)/*srt_interop*" Exclude="$(InteropTargetDir)/*.lib;$(InteropTargetDir)/*.exp;$(InteropTargetDir)/*.d;$(InteropTargetDir)/*.rlib" Pack="false">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+  </ItemGroup>
+
+  <ItemGroup Condition=" '$(NativeRuntimesDir)' != '' ">
+    <!-- CI collects the per-RID native builds into
+         $(NativeRuntimesDir)/{rid}/native/... before dotnet pack -->
+    <None Include="$(NativeRuntimesDir)/**/*" Pack="true" PackagePath="runtimes/%(RecursiveDir)%(Filename)%(Extension)" />
   </ItemGroup>
 
 </Project>
