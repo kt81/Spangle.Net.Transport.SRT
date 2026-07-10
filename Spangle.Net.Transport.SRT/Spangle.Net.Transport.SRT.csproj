@@ -21,12 +21,13 @@
   <PropertyGroup>
     <!-- Where the native interop library is picked up from; CI overrides this
          with -p:InteropTargetDir=../interop/target/release -->
-    <InteropTargetDir Condition=" '$(InteropTargetDir)' == '' ">..\interop\target\debug</InteropTargetDir>
+    <InteropTargetDir Condition=" '$(InteropTargetDir)' == '' ">../interop/target/debug</InteropTargetDir>
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- srt_interop.dll on Windows, libsrt_interop.so / .dylib elsewhere -->
-    <Content Include="$(InteropTargetDir)\*srt_interop*" Exclude="**\*.lib;**\*.exp;**\*.d">
+    <!-- srt_interop.dll on Windows, libsrt_interop.so / .dylib elsewhere.
+         Forward slashes only: backslash globs do not expand on Unix MSBuild. -->
+    <Content Include="$(InteropTargetDir)/*srt_interop*" Exclude="$(InteropTargetDir)/*.lib;$(InteropTargetDir)/*.exp;$(InteropTargetDir)/*.d">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>

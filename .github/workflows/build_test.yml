@@ -65,13 +65,20 @@ jobs:
         with:
           dotnet-version: 10.0.x
 
+      - name: Build .NET
+        run: dotnet build --configuration Release -p:InteropTargetDir=../interop/target/release
+
+      - name: Show native placement
+        shell: bash
+        run: ls -la Spangle.Net.Transport.SRT.Tests/bin/Release/net10.0/ | grep -i srt_interop
+
       - name: Test (live ffmpeg loopback)
         if: ${{ matrix.fullTests }}
-        run: dotnet test --configuration Release -p:InteropTargetDir=../interop/target/release --logger "console;verbosity=detailed"
+        run: dotnet test --no-build --configuration Release -p:InteropTargetDir=../interop/target/release --logger "console;verbosity=detailed"
 
       - name: Test (native library load only)
         if: ${{ !matrix.fullTests }}
-        run: dotnet test --configuration Release -p:InteropTargetDir=../interop/target/release --filter TestNativeLibraryVersion
+        run: dotnet test --no-build --configuration Release -p:InteropTargetDir=../interop/target/release --filter TestNativeLibraryVersion
 
       - name: Collect native artifact
         shell: bash
