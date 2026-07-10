@@ -44,6 +44,52 @@ public sealed class SRTListenerTest : IDisposable
         Assert.True(version >= new Version(1, 5, 5), $"expected libsrt >= 1.5.5, got {version}");
     }
 
+    /// <summary>
+    /// Loopback through libsrt itself - no external tools, so it runs on lanes
+    /// whose ffmpeg lacks the SRT protocol (Homebrew) or has no ffmpeg at all.
+    /// Exercises the full path: bind/listen/accept, connect, send, pipe delivery.
+    /// </summary>
+    [Fact]
+    public async Task TestNativeClientLoopback()
+    {
+        var ep = IPEndPoint.Parse("0.0.0.0:9997");
+        using var listener = new SRTListener(ep, _logger);
+        listener.Start();
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+        ValueTask<SRTClient> acceptTask = listener.AcceptSRTClientAsync(cts.Token);
+
+        byte[] payload = Encoding.ASCII.GetBytes("spangle-native-loopback");
+        int sock = ConnectAndSend(payload);
+
+        try
+        {
+            using var client = await acceptTask;
+            var result = await client.Pipe.Input.ReadAsync(cts.Token);
+            var received = result.Buffer.ToArray();
+            client.Pipe.Input.AdvanceTo(result.Buffer.End);
+            Assert.Equal(payload, received);
+        }
+        finally
+        {
+            LibSRT.srt_close(sock);
+        }
+
+        // pointer work stays out of the async state machine
+        static unsafe int ConnectAndSend(byte[] payload)
+        {
+            int addrSize = Marshal.SizeOf<sockaddr>();
+            int sock = LibSRT.srt_create_socket().ThrowIfError();
+            var sa = new LibSRT.sockaddr_in();
+            sockaddr* psa = LibSRT.WriteSockaddrIn(IPEndPoint.Parse("127.0.0.1:9997"), &sa, addrSize);
+            LibSRT.srt_connect(sock, psa, addrSize).ThrowIfError();
+            fixed (byte* p = payload)
+            {
+                LibSRT.srt_send(sock, p, payload.Length).ThrowIfError();
+            }
+            return sock;
+        }
+    }
+
     [Fact]
     public async Task TestListen()
     {

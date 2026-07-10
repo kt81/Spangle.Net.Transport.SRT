@@ -70,10 +70,11 @@ internal static unsafe partial class LibSRT
         var dataSpan = bufferSpan[2..];
         // 2 bytes port
         BinaryPrimitives.WriteUInt16BigEndian(dataSpan.Slice(0, 2), (ushort)ep.Port);
-        // 4 bytes addr
-#pragma warning disable CS0618
-        BinaryPrimitives.WriteUInt32BigEndian(dataSpan.Slice(2, 4), (uint)ep.Address.Address);
-#pragma warning restore CS0618
+        // 4 bytes addr, already in network order
+        // (the old code fed the network-ordered obsolete IPAddress.Address value
+        // through WriteUInt32BigEndian, flipping 127.0.0.1 into 1.0.0.127 - it
+        // went unnoticed because binding to 0.0.0.0 is all zeroes either way)
+        ep.Address.TryWriteBytes(dataSpan.Slice(2, 4), out _);
         // 8 bytes zero
         sin.sin_zero = 0L;
 
