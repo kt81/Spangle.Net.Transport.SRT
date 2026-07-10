@@ -9,11 +9,13 @@ crate-type = ["cdylib", "rlib"]
 path = "src/lib.rs"
 
 [dependencies]
-csbindgen = "1.8"
+csbindgen = "1.9"
 
 [build-dependencies]
-bindgen = "0.69.1"
-csbindgen = "1.8"
+# 0.7x is required for the newer libclang on CI runners: 0.69 panics on the
+# _Complex _Float16 builtins that LLVM 18+ exposes
+bindgen = "0.72"
+csbindgen = "1.9"
 cmake = "0.1"
 
 [dev-dependencies]

@@ -56,7 +56,17 @@ internal static unsafe partial class LibSRT
         Debug.Assert(length == 16);
         var bufferSpan = new Span<byte>(writeBuffer, length);
         ref var sin = ref MemoryMarshal.AsRef<sockaddr_in>(bufferSpan);
-        sin.sin_family = AF_INET;
+        if (OperatingSystem.IsMacOS())
+        {
+            // BSD layout: u8 sin_len, u8 sin_family (the u16 family of the
+            // Linux/Windows layout would be read as len=2, family=0 => EINVPARAM)
+            bufferSpan[0] = (byte)length;
+            bufferSpan[1] = AF_INET;
+        }
+        else
+        {
+            sin.sin_family = AF_INET;
+        }
         var dataSpan = bufferSpan[2..];
         // 2 bytes port
         BinaryPrimitives.WriteUInt16BigEndian(dataSpan.Slice(0, 2), (ushort)ep.Port);

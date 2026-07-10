@@ -115,15 +115,19 @@ fn main() {
     lib_path.push("lib");
     println!("cargo:rustc-link-search=native={}", lib_path.display());
 
-    println!("cargo:rustc-link-lib=static=crypto");
+    // Order matters on Unix: static archives are scanned once, so the dependent
+    // (srt) must come before its dependency (crypto), or the linker discards the
+    // EVP_* symbols and the .so dlopens with unresolved symbols.
     if target_os == "windows" {
         println!("cargo:rustc-link-lib=static=srt_static");
-    } else if target_os == "macos" {
-        println!("cargo:rustc-link-lib=dylib=c++");
-        println!("cargo:rustc-link-lib=static=srt");
     } else {
-        println!("cargo:rustc-link-lib=dylib=stdc++");
         println!("cargo:rustc-link-lib=static=srt");
+    }
+    println!("cargo:rustc-link-lib=static=crypto");
+    if target_os == "macos" {
+        println!("cargo:rustc-link-lib=dylib=c++");
+    } else if target_os == "linux" {
+        println!("cargo:rustc-link-lib=dylib=stdc++");
     }
 
     let header = dst.clone().join("include").join("srt").join("srt.h");
