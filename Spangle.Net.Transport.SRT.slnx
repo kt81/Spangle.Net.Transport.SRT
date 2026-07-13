@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/etc/">
+    <File Path=".editorconfig" />
+    <File Path=".gitattributes" />
+    <File Path=".gitignore" />
+    <File Path="Directory.Build.props" />
+    <File Path="global.json" />
+    <File Path="README.md" />
+  </Folder>
+  <Project Path="Spangle.Net.Transport.SRT.Tests/Spangle.Net.Transport.SRT.Tests.csproj" />
+  <Project Path="Spangle.Net.Transport.SRT/Spangle.Net.Transport.SRT.csproj" />
+</Solution>
